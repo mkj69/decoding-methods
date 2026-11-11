@@ -32,7 +32,7 @@ h1{font:700 clamp(26px,4vw,34px)/1.25 var(--f-display);margin:0 0 10px;text-wrap
 .legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:var(--muted);margin:10px 0 4px}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .st{display:inline-block;font:500 11px/1 var(--f-body);padding:4px 7px;border-radius:999px;white-space:nowrap}
-.st.read{background:var(--ok-soft);color:var(--ok)}
+.st.read,.st.formula{background:var(--ok-soft);color:var(--ok)}
 .st.arxiv{background:var(--accent-soft);color:var(--accent)}
 .st.pub{background:var(--info-soft);color:var(--info)}
 .st.unv{background:var(--warn-soft);color:var(--warn)}
@@ -47,7 +47,7 @@ h1{font:700 clamp(26px,4vw,34px)/1.25 var(--f-display);margin:0 0 10px;text-wrap
 #q{font:14px var(--f-body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:min(420px,100%)}
 .count{font:500 12.5px var(--f-mono);color:var(--muted);margin-left:auto}
 .tbl{overflow-x:auto;margin-top:12px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
-table{border-collapse:collapse;width:100%;min-width:1100px;font-size:13px}
+table{border-collapse:collapse;width:100%;min-width:1250px;font-size:13px}
 th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
 th{position:sticky;top:0;background:var(--soft);font-weight:600;font-size:12px;color:var(--muted);white-space:nowrap}
 tr.group td{background:var(--soft);font:600 13px var(--f-body);color:var(--ink);padding-block:7px}
@@ -70,6 +70,7 @@ footer li{margin:4px 0}
   <p class="lede">把生成阶段引导模型输出的方法放在一张表里，并与 Signed LM（在概率空间做带负系数的分布组合）对照。表很大，但不可能穷尽所有论文；每一行都标了核实到什么程度。</p>
   <div class="scope"><b>范围</b>：在生成阶段（不改模型参数），利用某种信号改变模型原本的输出倾向，使它更符合事实、上下文、安全或其他目标。最后两组（参数空间、通用采样）不属于这个范围，只作为对照列出。</div>
   <div class="legend">
+    <span><i class="st formula">公式已对照原文</i>核心公式和原文逐式对过</span>
     <span><i class="st read">已读原文</i>读过方法和实验部分</span>
     <span><i class="st arxiv">arXiv 已核对</i>编号和标题与 arXiv 官方记录一致，内容只看过摘要</span>
     <span><i class="st pub">出版信息已核对</i>在 OpenAlex 找到出版记录（DOI），未读</span>
@@ -92,161 +93,314 @@ footer li{margin:4px 0}
 
 <div class="tbl">
 <table>
-  <thead><tr><th>方法</th><th>出处</th><th>用什么信号</th><th>在哪个空间组合</th><th>什么时候出手</th><th>保证</th><th>和 Signed 的关系</th><th>核实</th></tr></thead>
+  <thead><tr><th>方法</th><th>出处</th><th>用什么信号</th><th>在哪个空间组合</th><th>什么时候出手</th><th>保证</th><th>训练需求</th><th>和 Signed 的关系</th><th>核实</th></tr></thead>
   <tbody id="tb"></tbody>
 </table>
 </div>
 
 <footer>
   <ul>
-    <li>核实方式：表里 87 个 arXiv 编号在 2026-11-10 用 arXiv 官方接口逐个查过标题；出版信息来自 OpenAlex 对 CAD、对比解码的被引检索（2025 年以后）。</li>
+    <li>核实方式：表里 244 个 arXiv 编号在 2026-11-10 用 arXiv 官方接口逐个查过标题（只核对了编号和标题，不代表核对过方法内容）；出版信息来自 OpenAlex 对 CAD、对比解码的被引检索（2025 年以后）。</li>
     <li>STARS（arXiv 2511.03827）：VFD 论文引用时的标题是「Segment-level token alignment with rejection sampling」，arXiv 现在的标题是「Synchronous Token Alignment for Robust Supervision」，可能改过名，引用前要核对。</li>
     <li>ICCD、NDAD 两条来自他人整理的清单，尚未查到原文，正式引用前必须打开核对。</li>
     <li>「出处」一栏：会议名称一部分来自 VFD 论文的参考文献和检索记录，一部分凭记忆；拿不准的只写年份。以链接指向的原始记录为准。</li>
-    <li>「组合空间」一栏：概率 = 在概率上加减；对数 = 在对数概率或 logits 上加减；候选筛选 = 不改概率，只决定哪些词或片段可以被选；整句 = 在整段回答层面采样或重排。</li>
+<li>「训练需求」一栏：不训练 = 主模型和辅助组件都不需要训练；现成辅助模型 = 需要另一个已有模型（如小模型、对齐前后的模型）；需训练辅助组件 = 主模型不动，但要训练探针、奖励模型、价值函数、专家模型或适配器；未核对 = 还没确认。这一栏按摘要和常识粗标，没有逐篇核对。</li>
+    <li>「直接重合」只表示核心公式或思路和 Signed 很接近，不等于任务相同或适合做基线；标了「公式待核对」的条目，确认公式之前不能据此判断新颖性。</li>
+    <li>2026-11-10 第二轮补充：4 个子 agent 分类检索 + 一份审阅意见，新增条目全部重新用 arXiv 接口核对；按审阅意见改正了 SafeDecoding、APD、VFD 三条，并把 kNN-LM 移到「推理时融合与集成」。</li>
+    <li>「组合空间」一栏：概率 = 在概率上加减；对数 = 在对数概率或 logits 上加减；候选筛选 = 屏蔽一部分候选后重新归一化，保留剩余候选之间的相对比例；整句 = 在整段回答层面采样或重排。</li>
   </ul>
 </footer>
 </div>
 
 <script>
-const ST={read:'已读原文',arxiv:'arXiv 已核对',pub:'出版信息已核对',unv:'未核实',fam:'方法族'};
+const ST={formula:'公式已对照原文',read:'已读原文',arxiv:'arXiv 已核对',pub:'出版信息已核对',unv:'未核实',fam:'方法族'};
 const REL={must:'直接重合',base:'主实验基线',borrow:'可借鉴',bg:'相关工作'};
 const CATS=[
- ['contrast','两个分布相减','正负分支或强弱模型的预测差'],
+ ['contrast','两个分布相减','正负分支、强弱模型、正负提示的预测差'],
  ['rag','知识冲突与 RAG','上下文和模型自身知识冲突时怎么办'],
- ['safety','安全方向的对比','用安全专家或反向提示做对比'],
- ['proxy','多模型 / 代理调优','用小模型的差去引导大模型（三模型形式）'],
+ ['safety','安全方向的解码','用安全专家、反向提示或自评做安全控制'],
+ ['proxy','多模型 / 代理调优','用小模型或对齐模型的差去引导大模型'],
+ ['fusion','推理时融合与集成','多个模型或多份上下文的正权重组合'],
  ['unlearn','解码时遗忘','在生成时压制某部分知识'],
  ['internal','模型内部的层、头、循环','用中间层或屏蔽注意力头构造另一份分布'],
  ['act','激活与表示干预','直接改隐藏状态'],
- ['value','价值 / 奖励引导','用对未来结局的估计或奖励模型引导'],
+ ['value','价值 / 奖励引导与搜索','用对未来结局的估计或奖励模型引导'],
  ['select','选择性干预：什么时候出手','只在需要时才动'],
- ['seq','整句层面的推断','在整段回答层面精确采样'],
- ['bound','有界影响、隐私与版权','限制某个上下文或模型对输出的影响'],
- ['diff','扩散模型的引导','掩码扩散语言模型和图像扩散的负向引导'],
+ ['seq','整句层面的推断','在整段回答层面精确或近似采样'],
+ ['constrain','约束解码与能量搜索','硬约束、语法约束、整序列能量'],
+ ['bound','有界影响、隐私、版权与风险控制','限制某个上下文或模型对输出的影响，或给出风险保证'],
+ ['diff','扩散模型的引导','掩码扩散语言模型和图像扩散'],
+ ['agent','多样性与 agent 层面','避开以前的输出、对抗模式坍缩、agent 行为'],
+ ['personal','个性化与风格','用户上下文、人设、风格'],
  ['param','参数与训练空间（对照）','不属于解码，但形式相近'],
- ['general','通用采样（对照）','截断与采样方法，常作为组件']
+ ['general','通用采样（对照）','截断、温度等采样组件']
 ];
-// [cat, name, title, venue/year, link, signal, space, when, guarantee, rel, relNote, status]
+// [cat, name, title, venue/year, link, signal, space, when, guarantee, rel, relNote, status, train]
 const R=[
-
-['contrast','Contrastive Decoding（CD）','Contrastive Decoding: Open-ended Text Generation as Optimization','ACL 2023','https://arxiv.org/abs/2210.15097','大模型 vs 小模型','对数 + 合理词过滤','每一步','无','base','最经典的对数空间对比，必须带过滤和不过滤两个版本','arxiv'],
-['contrast','CD 用于推理','Contrastive Decoding Improves Reasoning in Large Language Models','2023','https://arxiv.org/abs/2309.09117','大模型 vs 小模型','对数','每一步','无','bg','','arxiv'],
-['contrast','LLM 上的 CFG','Stay on topic with Classifier-Free Guidance','ICML 2024','https://arxiv.org/abs/2306.17806','有提示 vs 无提示','对数','每一步','无','base','','arxiv'],
-['contrast','APD','Explaining and Improving Contrastive Decoding by Extrapolating the Probabilities of a Huge and Hypothetical LM','2024','https://arxiv.org/abs/2411.01610','不同大小的模型','概率（外推）','每一步','无','must','主张在概率空间而不是对数空间外推，碰到 Signed 的核心卖点','arxiv'],
-['contrast','ICD（诱导幻觉对比）','Alleviating Hallucinations of Large Language Models through Induced Hallucinations','2023','https://arxiv.org/abs/2312.15710','原模型 vs 故意训练出幻觉的模型','对数','每一步','无','bg','负分支是专门构造的「坏模型」','arxiv'],
-['contrast','DExperts','DExperts: Decoding-Time Controlled Text Generation with Experts and Anti-Experts','ACL 2021','https://arxiv.org/abs/2105.03023','基础模型 + 专家 − 反专家','对数','每一步','无','base','三分支形式的对照','arxiv'],
-['contrast','PopCD','Polarity-Prompt Contrastive Decoding','TPAMI 2026','https://doi.org/10.1109/tpami.2026.3727985','正向提示 vs 反向提示','对数','每一步','无','must','两个提示做对比，和 Signed 用两个上下文几乎同构','pub'],
-['contrast','ICCD','正、负 in-context 示例下的预测差','ACL 2025（短文）','https://aclanthology.org/2025.acl-short.77/','正 / 负 in-context 示例','对数','每一步','无','bg','','unv'],
-['contrast','Multi-Amateur CD','Multi-Amateur Contrastive Decoding for Text Generation','2025','','一个大模型 vs 多个小模型','对数','每一步','无','bg','','pub'],
-
-['rag','CAD','Trusting Your Evidence: Hallucinate Less with Context-aware Decoding','NAACL 2024','https://arxiv.org/abs/2305.14739','有上下文 vs 无上下文','对数','每一步','无','base','','arxiv'],
-['rag','AdaCAD','AdaCAD: Adaptively Decoding to Balance Conflicts between Contextual and Parametric Knowledge','2024','https://arxiv.org/abs/2409.07394','同 CAD + 两分支分歧（JSD）','对数','每一步，强度按分歧自动调','无','base','「动态强度」的代表，可和整句版本的 a_eff 对照','arxiv'],
-['rag','COIECD','Discerning and Resolving Knowledge Conflicts through Adaptive Decoding with Contextual Information-Entropy Constraint','2024','https://arxiv.org/abs/2402.11893','熵的变化判断冲突','对数','有冲突的词才对比','无','base','','arxiv'],
-['rag','CK-PLUG','Parameters vs. Context: Fine-Grained Control of Knowledge Reliance in Language Models','2025','https://arxiv.org/abs/2503.15888','熵变化（Confidence Gain）','对数','按冲突程度','无','bg','','arxiv'],
-['rag','对比解码 + 拒答（ACD）','When to Speak, When to Abstain: Contrastive Decoding with Abstention','2024','https://arxiv.org/abs/2412.12527','有 / 无上下文 + 熵加权','对数','按熵自动调，可拒答','无','bg','把拒答作为一个选项','arxiv'],
-['rag','ARR（冲突感知解码）','From Context-Aware to Conflict-Aware: Generalizing Contrastive Decoding for Knowledge Conflict in LLMs','2026','https://arxiv.org/abs/2606.10298','先验与上下文的冲突信号','对数','冲突大时强对比，一致时几乎不动','无','base','','arxiv'],
-['rag','IGD','When Context Misleads: Intent-Guided Decoding for Robust Retrieval-Augmented Generation','2026','https://arxiv.org/abs/2608.16515','用户意图','答案层筛选 + 词层修正','按意图仲裁','无','bg','','arxiv'],
-['rag','DCCD','Dual-Confidence Contrastive Decoding for Retrieval-Augmented Generation','2026','https://arxiv.org/abs/2607.00570','文档级和词级置信度','对数','每一步','无','bg','多文档噪声与冲突','arxiv'],
-['rag','LFD','LFD: Layer Fused Decoding to Exploit External Knowledge in Retrieval-Augmented Generation','2025','https://arxiv.org/abs/2508.19614','中间层与最终层','融合','每一步','无','bg','比较「融合」与「相减」','arxiv'],
-['rag','NWCAD','No-Worse Context-Aware Decoding: Preventing Neutral Regression','ACL 2026 Findings','https://doi.org/10.18653/v1/2026.findings-acl.473','有 / 无上下文 + 两阶段开关','对数','上下文无信息时退回无上下文解码','「不变差」作为目标（非形式保证）','must','带开关的 CAD','pub'],
-['rag','多提示 CAD','Multi-prompt Context-aware Contrastive Decoding','BigComp 2026','https://doi.org/10.1109/bigcomp68355.2026.00025','多个提示','对数','每一步','无','bg','','pub'],
-['rag','显式知识冲突消解','Navigating Unreliable Parametric and Contextual Knowledge: Explicit Knowledge Conflict Resolution for LLM Inference','2026','https://arxiv.org/abs/2606.20245','模型与多个上下文','推理流程','—','无','bg','考虑模型和上下文都可能出错','arxiv'],
-['rag','重复提示的概率保证','Probabilistic Guarantees for Reducing Contextual Hallucinations in LLMs','2026','https://arxiv.org/abs/2601.00641','同一提示多次独立运行','整句（多次投票）','—','错误概率指数下降','bg','','arxiv'],
-
-['safety','SafeDecoding','SafeDecoding: Defending against Jailbreak Attacks via Safety-Aware Decoding','ACL 2024','https://arxiv.org/abs/2402.08983','原模型 vs 安全专家模型','对数','生成开头的几个词','无','bg','安全任务时的基线','arxiv'],
-['safety','ROSE','ROSE Doesn\'t Do That: Boosting the Safety of Instruction-Tuned LLMs with Reverse Prompt Contrastive Decoding','2024','https://arxiv.org/abs/2402.11889','正常提示 vs 反向（有害）提示','对数','每一步','无','borrow','用反向提示构造负分支，和 Signed 的负上下文同构','arxiv'],
-['safety','RPLCD','Reverse Prompt Layer Contrastive Decoding','IJCNN 2026','https://doi.org/10.1109/ijcnn69854.2026.11729050','反向提示 + 层间对数差','对数','每一步','无','bg','','pub'],
-
-['proxy','Proxy-Tuning','Tuning Language Models by Proxy','COLM 2024','https://arxiv.org/abs/2401.08565','小模型调优前后的差','对数','每一步','无','base','','arxiv'],
-['proxy','EFT（模拟微调）','An Emulator for Fine-Tuning Large Language Models using Small Language Models','ICLR 2024','https://arxiv.org/abs/2310.12962','大小模型 × 调优前后','对数','每一步','无','bg','把「预训练规模」和「微调规模」拆开组合','arxiv'],
-['proxy','CPT','Consistent Proxy Tuning for Black-Box Models','ICASSP 2026','https://doi.org/10.1109/icassp55912.2026.11463421','同 Proxy-Tuning，训练时对齐','对数','每一步','无','bg','','pub'],
-['proxy','CoSteer','Collaborative Decoding-Time Personalization via Local Delta Steering','EMNLP 2026 Findings','https://doi.org/10.18653/2026.findings-emnlp.1834','本地小模型：看用户上下文 vs 不看','对数','每一步','无','borrow','用上下文差做个性化，接近你说的「让 AI 更个性化」','pub'],
-['proxy','ThinkLogit','Logit Arithmetic Elicits Long Reasoning Capabilities Without Training','ACL 2026 Findings','https://doi.org/10.18653/v1/2026.findings-acl.1249','小推理模型的对数差','对数','每一步','无','bg','','pub'],
-['proxy','Nudging','Nudging: Inference-time Alignment of LLMs via Guided Decoding','2024','https://arxiv.org/abs/2410.09300','小对齐模型给出的词','候选替换','基础模型拿不准（top-1 概率低）时','无','borrow','「只在不确定处插一个词」，GGRO 的前身','arxiv'],
-['proxy','Weak-to-Strong Search（CBS）','Weak-to-Strong Search: Align Large Language Models via Searching over Small Language Models','NeurIPS 2024','https://arxiv.org/abs/2405.19262','小模型调优前后的对数似然差','整句片段搜索','按片段','无','bg','','arxiv'],
-
-['unlearn','UCD','UCD: Unlearning in LLMs via Contrastive Decoding','2025','https://arxiv.org/abs/2506.12097','遗忘集 vs 保留集上微调的两个小模型','对数','每一步','无','base','三模型形式的直接对照','arxiv'],
-['unlearn','δ-Unlearning','Offset Unlearning for Large Language Models','2024','https://arxiv.org/abs/2404.11045','基础模型与遗忘模型的对数偏移','对数','每一步','无','bg','','arxiv'],
-['unlearn','SEGUE（Decoding-Unlearning）','Decoding-Unlearning: Fact Forgetting via Entropy-Guided Inference','ACL 2026','https://aclanthology.org/2026.acl-long.1850/','探针判断是否涉及要忘的概念 + 熵','对数','探针触发时','无','borrow','「先判断再动」','pub'],
-
-['internal','DoLa','DoLa: Decoding by Contrasting Layers Improves Factuality in LLMs','ICLR 2024','https://arxiv.org/abs/2309.03883','最终层 vs 较早层','对数','每一步','无','bg','中间层可以充当负分支','arxiv'],
-['internal','SLED','SLED: Self Logits Evolution Decoding for Improving Factuality in LLMs','NeurIPS 2024','https://arxiv.org/abs/2411.02433','多个早期层的演化','对数（校正）','每一步','无','bg','','arxiv'],
-['internal','Active Layer-Contrastive Decoding','Active Layer-Contrastive Decoding Reduces Hallucination in LLM Generation','2025','https://arxiv.org/abs/2505.23657','层间对比 + 学习何时对比','对数','学习出的时机','无','borrow','','arxiv'],
-['internal','DeCoRe','DeCoRe: Decoding by Contrasting Retrieval Heads to Mitigate Hallucinations','2024','https://arxiv.org/abs/2410.18860','原模型 vs 屏蔽检索头后的模型','对数','每一步，强度按熵调','无','borrow','提供了构造负分支的另一种办法','arxiv'],
-['internal','NDAD','屏蔽重要注意力头，构造并加权负方向信号','ICLR 2026','https://proceedings.iclr.cc/paper_files/paper/2026/file/c429c3ae5299198032b0d3c22470d1ab-Paper-Conference.pdf','屏蔽头后的模型','对数','每一步','无','bg','','unv'],
-['internal','LoopCD','Decoding Looped Transformers Better for (Almost) Free','2026','https://arxiv.org/abs/2610.02185','循环模型的最终循环 vs 较早循环','对数 / 隐藏状态','每一步','无','bg','适用于 Ouro 这类循环模型','arxiv'],
-['internal','Attention Contrastive Decoding','Beyond Logits: Coherent Hallucination Mitigation via Attention Contrastive Decoding','ICML 2026','https://icml.cc/virtual/2026/poster/63322','注意力模式','注意力层','每一步','无','bg','多模态幻觉','pub'],
-
-['act','ActAdd','Steering Language Models With Activation Engineering','2023','https://arxiv.org/abs/2308.10248','两段提示的激活差','隐藏状态','每一步（固定加）','无','bg','','arxiv'],
-['act','CAA','Steering Llama 2 via Contrastive Activation Addition','ACL 2024','https://arxiv.org/abs/2312.06681','正负示例的平均激活差','隐藏状态','每一步','无','bg','激活空间的「正减负」','arxiv'],
-['act','RepE','Representation Engineering: A Top-Down Approach to AI Transparency','2023','https://arxiv.org/abs/2310.01405','概念方向','隐藏状态','—','无','bg','','arxiv'],
-['act','ITI','Inference-Time Intervention: Eliciting Truthful Answers from a Language Model','NeurIPS 2023','https://arxiv.org/abs/2306.03341','特定注意力头上的事实方向','隐藏状态','每一步','无','bg','','arxiv'],
-['act','Activation Decoding','In-Context Sharpness as Alerts: An Inner Representation Perspective for Hallucination Mitigation','2024','https://arxiv.org/abs/2403.01548','内部表示的「尖锐程度」','对数（调整）','每一步','无','bg','','arxiv'],
-['act','CREST','Beyond Token-Level Guidance: Inference-Time Alignment of Specialized LLMs via Cross-Family Representation Steering','EMNLP 2026','https://arxiv.org/abs/2608.30319','另一个模型族提取的安全方向','隐藏状态','每一步','无','bg','','arxiv'],
-['act','PCNET','Hallucination as an Anomaly: Dynamic Intervention via Probabilistic Circuits','2026','https://arxiv.org/abs/2605.05953','残差流上的密度估计','隐藏状态','检测到异常时才改','无','borrow','「什么时候动」','arxiv'],
-
-['value','FUDGE','FUDGE: Controlled Text Generation With Future Discriminators','NAACL 2021','https://arxiv.org/abs/2104.05218','判断「未来能否满足属性」的分类器','概率乘法','每一步','无','borrow','用「对结局的估计」而不是字符串概率，可修整句塌缩','arxiv'],
-['value','GeDi','GeDi: Generative Discriminator Guided Sequence Generation','Findings EMNLP 2021','https://arxiv.org/abs/2009.06367','小的条件语言模型当判别器','概率（贝叶斯）','每一步','无','bg','','arxiv'],
-['value','PPLM','Plug and Play Language Models: A Simple Approach to Controlled Text Generation','ICLR 2020','https://arxiv.org/abs/1912.02164','属性分类器的梯度','隐藏状态（梯度更新）','每一步','无','bg','','arxiv'],
-['value','Controlled Decoding','Controlled Decoding from Language Models','ICML 2024','https://arxiv.org/abs/2310.17022','前缀打分器（价值函数）','概率 × exp(λV)','每一步或分块','无','bg','VFD 比较的基线','arxiv'],
-['value','VAS','Value Augmented Sampling for Language Model Alignment and Personalization','2024','https://arxiv.org/abs/2405.06639','价值函数','概率 × exp(λV)','每一步','无','bg','','arxiv'],
-['value','ARGS','ARGS: Alignment as Reward-Guided Search','ICLR 2024','https://arxiv.org/abs/2402.01694','奖励模型','候选打分（加法）','每一步 top-K','无','bg','VFD、GGRO 比较的基线','arxiv'],
-['value','CARDS','Cascade Reward Sampling for Efficient Decoding-Time Alignment','COLM 2025','https://arxiv.org/abs/2406.16306','奖励模型','按片段拒绝采样','按片段','无','bg','','arxiv'],
-['value','STARS','Segment-level token alignment with rejection sampling（arXiv 现标题不同，见页脚）','2025','https://arxiv.org/abs/2511.03827','奖励模型','按片段拒绝采样','按片段','无','bg','','arxiv'],
-['value','GenARM','GenARM: Reward Guided Generation with Autoregressive Reward Model for Test-time Alignment','ICLR 2025','https://arxiv.org/abs/2410.08193','逐词奖励模型','对数','每一步','无','bg','','arxiv'],
-['value','DeAL','DeAL: Decoding-time Alignment for Large Language Models','2024','https://arxiv.org/abs/2402.06147','对齐目标 + 搜索','启发式搜索','每一步','无','bg','','arxiv'],
-['value','Transfer Q*','Transfer Q Star: Principled Decoding for LLM Alignment','NeurIPS 2024','https://arxiv.org/abs/2405.20495','借另一个对齐模型估计 Q 函数','概率 × exp(Q)','每一步','有次优性分析','bg','','arxiv'],
-['value','RMOD','Robust Multi-Objective Controlled Decoding of Large Language Models','2025','https://arxiv.org/abs/2503.08796','多个目标的价值估计','概率加权','每一步','关注最弱目标','bg','多目标安全任务的基线','arxiv'],
-['value','GGRO','Gradient-Guided Reward Optimization for Inference-time Alignment','2026','https://arxiv.org/abs/2606.09635','奖励模型对输入的梯度','插入推动词 + 片段级 Best-of-N','熵超过阈值时','无','borrow','用熵决定什么时候出手','read'],
-['value','语义概率控制','Semantic Probabilistic Control of Language Models','2025','https://arxiv.org/abs/2505.01954','整句验证器的梯度','概率','每一步','近似条件采样','borrow','对应「在意思层面比，不在字符串层面比」','arxiv'],
-['value','LARA','Safe Inference-Time Alignment via Lagrangian Reward Augmentation','2026','https://arxiv.org/abs/2607.02781','奖励 + 安全约束（拉格朗日）','奖励改写','—','对逐词方法只是校准过的启发式','bg','','arxiv'],
-['value','奖励引导的推测解码','Reward-Guided Speculative Decoding for Efficient LLM Reasoning','ICML 2025','https://arxiv.org/abs/2501.19324','过程奖励模型','草稿接受规则','每一步','无','bg','','arxiv'],
-['value','Best-of-N','生成 N 条完整回答，按奖励选最好的','方法族','','奖励模型','整句重排','整句','无','bg','','fam'],
-['value','奖励加权重采样 / 拒绝采样','按奖励或接受概率筛选候选','方法族','','奖励模型','整句或片段筛选','整句或片段','无','bg','','fam'],
-
-['select','VFD（按价值过滤）','Selective Safety Steering via Value-Filtered Decoding','2026','https://arxiv.org/abs/2605.14746','价值探针 V_t（需要标签训练）','候选筛选（硬阈值，其余保持原比例）','只有 V_t < c 的词被禁','安全不降；误干预率 ≤ α（Ville 不等式 + 共形校准）','must','和 Signed 骨架相同（排除一些词再归一化），但有开关和保证','read'],
-['select','CARE','CARE: Decoding Time Safety Alignment via Rollback and Introspection Intervention','NeurIPS 2025','https://arxiv.org/abs/2509.06982','守卫模型','回滚 + 自我反思重写','守卫模型报警时','无','borrow','「检测、回滚、干预」能让对比解码在不伤质量的情况下提升安全','arxiv'],
-['select','TAD','TAD: Token-Adaptive Contrastive Decoding with Confidence-Guided Gating','2026','https://arxiv.org/abs/2609.07286','置信度','对数','开关决定每个词是否对比','无','bg','音频语言模型','arxiv'],
-['select','What RL Brings','What RL Brings to Reasoning: A Few Decisions the Base Model Would Not Make','2026','https://arxiv.org/abs/2610.24663','RL 模型的贪心选择','候选替换','两个模型贪心选择不同的约 4% 位置','无','borrow','只在少数位置动就能找回 90% 的提升','arxiv'],
-['select','Conformal Policy Control','Conformal Policy Control','2026','https://arxiv.org/abs/2603.02196','安全参考策略','策略混合','—','有限样本风险控制','borrow','VFD 校准方法的来源','arxiv'],
-['select','Avoidance Decoding','Avoidance Decoding for Diverse Multi-Branch Story Generation','EMNLP 2025','https://doi.org/10.18653/v1/2025.emnlp-main.381','和已生成分支的相似度','对数惩罚','每一步，早期看概念、后期看情节','无','borrow','「避开以前的输出」，和失败记忆的想法相关','pub'],
-
-['seq','SMC Steering（LLaMPPL）','Sequential Monte Carlo Steering of Large Language Models using Probabilistic Programs','2023','https://arxiv.org/abs/2306.03081','约束（势函数）','整句（粒子重采样）','每一步重采样','渐近精确','borrow','精确采样整句目标的正统做法','arxiv'],
-['seq','Twisted SMC','Probabilistic Inference in Language Models via Twisted Sequential Monte Carlo','ICML 2024','https://arxiv.org/abs/2404.17546','学到的扭转函数（对未来的估计）','整句','每一步','渐近精确','borrow','修补整句塌缩最正统的路：加对未来的估计','arxiv'],
-['seq','自蒸馏 Twisted SMC','Improving Constrained Language Generation via Self-Distilled Twisted SMC','2025','https://arxiv.org/abs/2507.02315','自蒸馏的扭转函数','整句','每一步','渐近精确','bg','','arxiv'],
-['seq','SMC 句法与语义控制','Syntactic and Semantic Control of Large Language Models via Sequential Monte Carlo','ICLR 2025','https://arxiv.org/abs/2504.13139','约束势函数','整句','每一步','渐近精确','bg','','arxiv'],
-['seq','SMC 模型集成','Ensembling Language Models with Sequential Monte Carlo','2026','https://arxiv.org/abs/2603.05432','多个模型','整句','每一步','渐近精确','bg','','arxiv'],
-['seq','ByteSampler','Sampling from Your Language Model One Byte at a Time','2025','https://arxiv.org/abs/2506.14123','—','字节级','—','—','bg','让不同词表的模型能逐字节组合（Anchored Decoding 用到）','arxiv'],
-
-['bound','Anchored Decoding','Anchored Decoding: Provably Reducing Copyright Risk for Any Language Model','2026','https://arxiv.org/abs/2602.07120','许可证干净的安全模型','每步约束','每一步，预算自适应分配到整条轨迹','整句级保证','must','基本覆盖了上限投影和整句预算的想法','arxiv'],
-['bound','LaVGuard','LaVGuard: Selective Decoding for Contextual Value Drift','2026','https://arxiv.org/abs/2610.29135','价值画像 + 候选续写的带符号进展','对数倾斜','开关决定何时评估','改动位置数和累计 KL 都有预算；输出分布变化有上界','must','同时有开关、带符号的方向和预算','arxiv'],
-['bound','What the Model Cannot See','What the Model Cannot See: Covert and Provable Text Invisibility in LLMs','2026','https://arxiv.org/abs/2610.15883','被标记的文本片段','阻断信息流','—','被屏蔽片段之外的激活逐位不变','bg','运行时硬隔离的另一种实现','arxiv'],
-['bound','DPS-MOZO','Differentially Private In-context Learning via Sampling Few-shot Mixed with Zero-shot Outputs','2025','https://arxiv.org/abs/2501.19287','看私密示例 vs 不看示例（零样本）','概率混合','每一步','差分隐私','must','','arxiv'],
-['bound','DP-Decoding','Differentially Private Decoding in Large Language Models','2022','https://arxiv.org/abs/2205.13621','均匀分布','概率混合','每一步','差分隐私','bg','','arxiv'],
-['bound','RAG + 差分隐私','RAG with Differential Privacy','2024','https://arxiv.org/abs/2412.19291','每次只带一篇文档的多个分布','指数机制聚合','每一步','差分隐私','bg','','arxiv'],
-['bound','BLOOMSCRUB','Certified Mitigation of Worst-Case LLM Copyright Infringement','EMNLP 2025','https://doi.org/10.18653/v1/2025.emnlp-main.1784','长引文检测','检测 + 改写','检测到时','认证式移除','bg','','pub'],
-['bound','Privacy-Aware Decoding','Mitigating Privacy Leakage of LLMs in Retrieval-Augmented Generation','2026','https://doi.org/10.1145/3770855.3817665','—','—','—','—','bg','只找到出版记录，没有摘要','pub'],
-
-['diff','掩码扩散的 CFG','Improving Classifier-Free Guidance in Masked Diffusion: Low-Dim Theoretical Insights with High-Dim Impact','2025','https://arxiv.org/abs/2507.08965','有条件 vs 无条件','速率矩阵','早期引导有害，后期有益','有低维理论分析','borrow','','arxiv'],
-['diff','Commitment Before Realization','When Classifier-Free Guidance Becomes Unnecessary in Masked Diffusion Language Models','2026','https://arxiv.org/abs/2608.08082','有条件 vs 无条件','对数','每个提示过了某个时间点后关掉','非劣效检验','borrow','「什么时候可以不动」','arxiv'],
-['diff','动态负向引导','Dynamic Negative Guidance of Diffusion Models','2024','https://arxiv.org/abs/2410.14398','负向提示','噪声预测','强度随时间和内容变化','无','bg','图像','arxiv'],
-['diff','VLM 引导的动态负向提示','Dynamic VLM-Guided Negative Prompting for Diffusion Models','2025','https://arxiv.org/abs/2510.26052','视觉语言模型生成的负向提示','噪声预测','动态','无','bg','图像','arxiv'],
-['diff','VSF','VSF: Negative Guidance in Few-Step Image Generation Models By Value Sign Flip','2025','https://arxiv.org/abs/2508.10931','负向提示','注意力值取反','—','无','bg','图像','arxiv'],
-['diff','概念移除引导','Concept Removal Guidance: Evidence-Calibrated Negative Guidance for Safe Diffusion Sampling','2026','https://arxiv.org/abs/2606.29801','证据校准的负向引导','噪声预测','按证据强度','无','bg','图像','arxiv'],
-
-['param','Task Arithmetic','Editing Models with Task Arithmetic','ICLR 2023','https://arxiv.org/abs/2212.04089','任务向量','参数（相减可遗忘）','—','—','bg','权重空间的「Signed」','arxiv'],
-['param','ExPO','Model Extrapolation Expedites Alignment','2024','https://arxiv.org/abs/2404.16792','对齐前后的权重','参数外推 (1+a)θ₁ − aθ₀','—','—','bg','','arxiv'],
-['param','NPO','Negative Preference Optimization: From Catastrophic Collapse to Effective Unlearning','COLM 2024','https://arxiv.org/abs/2404.05868','要遗忘的数据','训练（有界负权重）','—','—','bg','有界负权重的训练方法','arxiv'],
-['param','Unlikelihood Training','Neural Text Generation with Unlikelihood Training','ICLR 2020','https://arxiv.org/abs/1908.04319','负样本','训练','—','—','bg','','arxiv'],
-['param','上下文蒸馏','Learning by Distilling Context','2022','https://arxiv.org/abs/2209.15189','带上下文时的输出','训练','—','—','borrow','','arxiv'],
-['param','kNN-LM','Generalization through Memorization: Nearest Neighbor Language Models','ICLR 2020','https://arxiv.org/abs/1911.00172','检索得到的近邻分布','概率插值','每一步','—','bg','推理时的概率融合','arxiv'],
-['param','CDD（对比解码做模型差异分析）','Reading the Finetuning Prior: Verbatim Content Recovery via Contrastive Decoding Diffing','2026','https://arxiv.org/abs/2605.25902','基础模型 vs 微调模型','对数','每一步','—','bg','把对比解码用作分析工具','arxiv'],
-['param','logit 组合的理论','Compositional Generalization in Autoregressive Models via Logit Composition','2026','https://arxiv.org/abs/2605.28304','多个模型','对数','—','条件可分解时各自控制各自的子空间','borrow','可用于讨论概率空间 vs 对数空间','arxiv'],
-
-['general','Nucleus（top-p）','The Curious Case of Neural Text Degeneration','ICLR 2020','https://arxiv.org/abs/1904.09751','—','截断','每一步','—','bg','','arxiv'],
-['general','Min-p','Turning Up the Heat: Min-p Sampling for Creative and Coherent LLM Outputs','2024','https://arxiv.org/abs/2407.01082','—','截断','每一步','—','bg','和「合理词过滤」同一类做法','arxiv'],
-['general','Contrastive Search','A Contrastive Framework for Neural Text Generation','NeurIPS 2022','https://arxiv.org/abs/2202.06417','与已生成内容的相似度','候选打分','每一步','—','bg','名字相近，和对比解码不是一回事','arxiv']
+['contrast','Contrastive Decoding（CD）','Contrastive Decoding: Open-ended Text Generation as Optimization','ACL 2023','https://arxiv.org/abs/2210.15097','大模型 vs 小模型','对数 + 合理词过滤','每一步','无','base','最经典的对数空间对比，必须带过滤和不过滤两个版本','arxiv','现成辅助模型'],
+['contrast','CD 用于推理','Contrastive Decoding Improves Reasoning in Large Language Models','2023','https://arxiv.org/abs/2309.09117','大模型 vs 小模型','对数','每一步','无','bg','','arxiv','现成辅助模型'],
+['contrast','LLM 上的 CFG','Stay on topic with Classifier-Free Guidance','ICML 2024','https://arxiv.org/abs/2306.17806','有提示 vs 无提示','对数','每一步','无','base','','arxiv','不训练'],
+['contrast','APD','Explaining and Improving Contrastive Decoding by Extrapolating the Probabilities of a Huge and Hypothetical LM','2024','https://arxiv.org/abs/2411.01610','不同大小的模型','训练时外推概率曲线并微调小模型 ALM′；推理时与对比解码一样用 logit 差','每一步','无','bg','不是在概率上直接相减；但它讨论了概率空间与对数空间外推的差别','formula','需训练辅助组件'],
+['contrast','ICD（诱导幻觉对比）','Alleviating Hallucinations of Large Language Models through Induced Hallucinations','2023','https://arxiv.org/abs/2312.15710','原模型 vs 故意训练出幻觉的模型','对数','每一步','无','bg','负分支是专门构造的「坏模型」','arxiv','需训练辅助组件'],
+['contrast','DExperts','DExperts: Decoding-Time Controlled Text Generation with Experts and Anti-Experts','ACL 2021','https://arxiv.org/abs/2105.03023','基础模型 + 专家 − 反专家','对数','每一步','无','base','三分支形式的对照','arxiv','需训练辅助组件'],
+['contrast','PopCD','Polarity-Prompt Contrastive Decoding','TPAMI 2026','https://doi.org/10.1109/tpami.2026.3727985','正向提示 vs 反向提示','对数 + 合理词过滤（log P₊ − γ log P₋）','每一步','无','bg','两个提示的对比，但在对数空间；公式取自同作者 arXiv 预印本 2602.20696（PromptCD）','formula','不训练'],
+['contrast','ICCD','正、负 in-context 示例下的预测差','ACL 2025（短文）','https://aclanthology.org/2025.acl-short.77/','正 / 负 in-context 示例','对数','每一步','无','bg','','unv','不训练'],
+['contrast','Multi-Amateur CD','Multi-Amateur Contrastive Decoding for Text Generation','2025','','一个大模型 vs 多个小模型','对数','每一步','无','bg','','pub','现成辅助模型'],
+['rag','CAD','Trusting Your Evidence: Hallucinate Less with Context-aware Decoding','NAACL 2024','https://arxiv.org/abs/2305.14739','有上下文 vs 无上下文','对数','每一步','无','base','','arxiv','不训练'],
+['rag','AdaCAD','AdaCAD: Adaptively Decoding to Balance Conflicts between Contextual and Parametric Knowledge','2024','https://arxiv.org/abs/2409.07394','同 CAD + 两分支分歧（JSD）','对数','每一步，强度按分歧自动调','无','base','「动态强度」的代表，可和整句版本的 a_eff 对照','arxiv','不训练'],
+['rag','COIECD','Discerning and Resolving Knowledge Conflicts through Adaptive Decoding with Contextual Information-Entropy Constraint','2024','https://arxiv.org/abs/2402.11893','熵的变化判断冲突','对数','有冲突的词才对比','无','base','','arxiv','不训练'],
+['rag','CK-PLUG','Parameters vs. Context: Fine-Grained Control of Knowledge Reliance in Language Models','2025','https://arxiv.org/abs/2503.15888','熵变化（Confidence Gain）','对数','按冲突程度','无','bg','','arxiv','不训练'],
+['rag','对比解码 + 拒答（ACD）','When to Speak, When to Abstain: Contrastive Decoding with Abstention','2024','https://arxiv.org/abs/2412.12527','有 / 无上下文 + 熵加权','对数','按熵自动调，可拒答','无','bg','把拒答作为一个选项','arxiv','不训练'],
+['rag','ARR（冲突感知解码）','From Context-Aware to Conflict-Aware: Generalizing Contrastive Decoding for Knowledge Conflict in LLMs','2026','https://arxiv.org/abs/2606.10298','先验与上下文的冲突信号','对数','冲突大时强对比，一致时几乎不动','无','base','','arxiv','不训练'],
+['rag','IGD','When Context Misleads: Intent-Guided Decoding for Robust Retrieval-Augmented Generation','2026','https://arxiv.org/abs/2608.16515','用户意图','答案层筛选 + 词层修正','按意图仲裁','无','bg','','arxiv','未核对'],
+['rag','DCCD','Dual-Confidence Contrastive Decoding for Retrieval-Augmented Generation','2026','https://arxiv.org/abs/2607.00570','文档级和词级置信度','对数','每一步','无','bg','多文档噪声与冲突','arxiv','不训练'],
+['rag','LFD','LFD: Layer Fused Decoding to Exploit External Knowledge in Retrieval-Augmented Generation','2025','https://arxiv.org/abs/2508.19614','中间层与最终层','融合','每一步','无','bg','比较「融合」与「相减」','arxiv','不训练'],
+['rag','NWCAD','No-Worse Context-Aware Decoding: Preventing Neutral Regression','ACL 2026 Findings','https://doi.org/10.18653/v1/2026.findings-acl.473','有 / 无上下文 + 两阶段开关','逐词路由：按 JS 散度和置信差选无上下文流 / 上下文流 / CAD 类回退','上下文无信息时退回无上下文解码','「不变差」作为目标（非形式保证）','base','带开关；唯一的带符号组合是对数空间的回退解码器','formula','未核对'],
+['rag','多提示 CAD','Multi-prompt Context-aware Contrastive Decoding','BigComp 2026','https://doi.org/10.1109/bigcomp68355.2026.00025','多个提示','对数','每一步','无','bg','','pub','不训练'],
+['rag','显式知识冲突消解','Navigating Unreliable Parametric and Contextual Knowledge: Explicit Knowledge Conflict Resolution for LLM Inference','2026','https://arxiv.org/abs/2606.20245','模型与多个上下文','推理流程','—','无','bg','考虑模型和上下文都可能出错','arxiv','未核对'],
+['rag','重复提示的概率保证','Probabilistic Guarantees for Reducing Contextual Hallucinations in LLMs','2026','https://arxiv.org/abs/2601.00641','同一提示多次独立运行','整句（多次投票）','—','错误概率指数下降','bg','','arxiv','不训练'],
+['safety','SafeDecoding','SafeDecoding: Defending against Jailbreak Attacks via Safety-Aware Decoding','ACL 2024','https://arxiv.org/abs/2402.08983','原模型 vs 安全专家模型','概率（带负系数外推）：P = p_原 + α(p_专家 − p_原)，在两者前 k 词交集上归一化；α=3 即 3p_专家 − 2p_原','只在生成开头的若干个词','无','must','原文式 4，α=3 即 a=2 的 (1+a)p₊ − a·p₋；官方代码把 ≤0 的值置为 1e-8 再归一化，相当于取正部；论文只用于前 2 个词。区别：前 k 交集、只管开头、需训练专家、没有整句前缀','formula','需训练辅助组件'],
+['safety','ROSE','ROSE Doesn\'t Do That: Boosting the Safety of Instruction-Tuned LLMs with Reverse Prompt Contrastive Decoding','2024','https://arxiv.org/abs/2402.11889','正常提示 vs 反向（有害）提示','对数','每一步','无','borrow','用反向提示构造负分支，和 Signed 的负上下文同构','arxiv','不训练'],
+['safety','RPLCD','Reverse Prompt Layer Contrastive Decoding','IJCNN 2026','https://doi.org/10.1109/ijcnn69854.2026.11729050','反向提示 + 层间对数差','对数','每一步','无','bg','','pub','未核对'],
+['proxy','Proxy-Tuning','Tuning Language Models by Proxy','COLM 2024','https://arxiv.org/abs/2401.08565','小模型调优前后的差','对数','每一步','无','base','','arxiv','现成辅助模型'],
+['proxy','EFT（模拟微调）','An Emulator for Fine-Tuning Large Language Models using Small Language Models','ICLR 2024','https://arxiv.org/abs/2310.12962','大小模型 × 调优前后','对数','每一步','无','bg','把「预训练规模」和「微调规模」拆开组合','arxiv','现成辅助模型'],
+['proxy','CPT','Consistent Proxy Tuning for Black-Box Models','ICASSP 2026','https://doi.org/10.1109/icassp55912.2026.11463421','同 Proxy-Tuning，训练时对齐','对数','每一步','无','bg','','pub','需训练辅助组件'],
+['proxy','CoSteer','Collaborative Decoding-Time Personalization via Local Delta Steering','EMNLP 2026 Findings','https://doi.org/10.18653/2026.findings-emnlp.1834','本地小模型：看用户上下文 vs 不看','对数','每一步','无','borrow','用上下文差做个性化，接近你说的「让 AI 更个性化」','pub','未核对'],
+['proxy','ThinkLogit','Logit Arithmetic Elicits Long Reasoning Capabilities Without Training','ACL 2026 Findings','https://doi.org/10.18653/v1/2026.findings-acl.1249','小推理模型的对数差','对数','每一步','无','bg','','pub','未核对'],
+['proxy','Nudging','Nudging: Inference-time Alignment of LLMs via Guided Decoding','2024','https://arxiv.org/abs/2410.09300','小对齐模型给出的词','候选替换','基础模型拿不准（top-1 概率低）时','无','borrow','「只在不确定处插一个词」，GGRO 的前身','arxiv','现成辅助模型'],
+['proxy','Weak-to-Strong Search（CBS）','Weak-to-Strong Search: Align Large Language Models via Searching over Small Language Models','NeurIPS 2024','https://arxiv.org/abs/2405.19262','小模型调优前后的对数似然差','整句片段搜索','按片段','无','bg','','arxiv','现成辅助模型'],
+['unlearn','UCD','UCD: Unlearning in LLMs via Contrastive Decoding','2025','https://arxiv.org/abs/2506.12097','遗忘集 vs 保留集上微调的两个小模型','对数','每一步','无','base','三模型形式的直接对照','arxiv','需训练辅助组件'],
+['unlearn','δ-Unlearning','Offset Unlearning for Large Language Models','2024','https://arxiv.org/abs/2404.11045','基础模型与遗忘模型的对数偏移','对数','每一步','无','bg','','arxiv','需训练辅助组件'],
+['unlearn','SEGUE（Decoding-Unlearning）','Decoding-Unlearning: Fact Forgetting via Entropy-Guided Inference','ACL 2026','https://aclanthology.org/2026.acl-long.1850/','探针判断是否涉及要忘的概念 + 熵','对数','探针触发时','无','borrow','「先判断再动」','pub','未核对'],
+['internal','DoLa','DoLa: Decoding by Contrasting Layers Improves Factuality in LLMs','ICLR 2024','https://arxiv.org/abs/2309.03883','最终层 vs 较早层','对数','每一步','无','bg','中间层可以充当负分支','arxiv','不训练'],
+['internal','SLED','SLED: Self Logits Evolution Decoding for Improving Factuality in LLMs','NeurIPS 2024','https://arxiv.org/abs/2411.02433','多个早期层的演化','对数（校正）','每一步','无','bg','','arxiv','不训练'],
+['internal','Active Layer-Contrastive Decoding','Active Layer-Contrastive Decoding Reduces Hallucination in LLM Generation','2025','https://arxiv.org/abs/2505.23657','层间对比 + 学习何时对比','对数','学习出的时机','无','borrow','','arxiv','未核对'],
+['internal','DeCoRe','DeCoRe: Decoding by Contrasting Retrieval Heads to Mitigate Hallucinations','2024','https://arxiv.org/abs/2410.18860','原模型 vs 屏蔽检索头后的模型','对数','每一步，强度按熵调','无','borrow','提供了构造负分支的另一种办法','arxiv','不训练'],
+['internal','NDAD','屏蔽重要注意力头，构造并加权负方向信号','ICLR 2026','https://proceedings.iclr.cc/paper_files/paper/2026/file/c429c3ae5299198032b0d3c22470d1ab-Paper-Conference.pdf','屏蔽头后的模型','对数','每一步','无','bg','','unv','未核对'],
+['internal','LoopCD','Decoding Looped Transformers Better for (Almost) Free','2026','https://arxiv.org/abs/2610.02185','循环模型的最终循环 vs 较早循环','对数 / 隐藏状态','每一步','无','bg','适用于 Ouro 这类循环模型','arxiv','不训练'],
+['internal','Attention Contrastive Decoding','Beyond Logits: Coherent Hallucination Mitigation via Attention Contrastive Decoding','ICML 2026','https://icml.cc/virtual/2026/poster/63322','注意力模式','注意力层','每一步','无','bg','多模态幻觉','pub','未核对'],
+['act','ActAdd','Steering Language Models With Activation Engineering','2023','https://arxiv.org/abs/2308.10248','两段提示的激活差','隐藏状态','每一步（固定加）','无','bg','','arxiv','不训练'],
+['act','CAA','Steering Llama 2 via Contrastive Activation Addition','ACL 2024','https://arxiv.org/abs/2312.06681','正负示例的平均激活差','隐藏状态','每一步','无','bg','激活空间的「正减负」','arxiv','不训练'],
+['act','RepE','Representation Engineering: A Top-Down Approach to AI Transparency','2023','https://arxiv.org/abs/2310.01405','概念方向','隐藏状态','—','无','bg','','arxiv','不训练'],
+['act','ITI','Inference-Time Intervention: Eliciting Truthful Answers from a Language Model','NeurIPS 2023','https://arxiv.org/abs/2306.03341','特定注意力头上的事实方向','隐藏状态','每一步','无','bg','','arxiv','需训练辅助组件'],
+['act','Activation Decoding','In-Context Sharpness as Alerts: An Inner Representation Perspective for Hallucination Mitigation','2024','https://arxiv.org/abs/2403.01548','内部表示的「尖锐程度」','对数（调整）','每一步','无','bg','','arxiv','未核对'],
+['act','CREST','Beyond Token-Level Guidance: Inference-Time Alignment of Specialized LLMs via Cross-Family Representation Steering','EMNLP 2026','https://arxiv.org/abs/2608.30319','另一个模型族提取的安全方向','隐藏状态','每一步','无','bg','','arxiv','未核对'],
+['act','PCNET','Hallucination as an Anomaly: Dynamic Intervention via Probabilistic Circuits','2026','https://arxiv.org/abs/2605.05953','残差流上的密度估计','隐藏状态','检测到异常时才改','无','borrow','「什么时候动」','arxiv','未核对'],
+['value','FUDGE','FUDGE: Controlled Text Generation With Future Discriminators','NAACL 2021','https://arxiv.org/abs/2104.05218','判断「未来能否满足属性」的分类器','概率乘法','每一步','无','borrow','用「对结局的估计」而不是字符串概率，可修整句塌缩','arxiv','需训练辅助组件'],
+['value','GeDi','GeDi: Generative Discriminator Guided Sequence Generation','Findings EMNLP 2021','https://arxiv.org/abs/2009.06367','小的条件语言模型当判别器','概率（贝叶斯）','每一步','无','bg','','arxiv','需训练辅助组件'],
+['value','PPLM','Plug and Play Language Models: A Simple Approach to Controlled Text Generation','ICLR 2020','https://arxiv.org/abs/1912.02164','属性分类器的梯度','隐藏状态（梯度更新）','每一步','无','bg','','arxiv','需训练辅助组件'],
+['value','Controlled Decoding','Controlled Decoding from Language Models','ICML 2024','https://arxiv.org/abs/2310.17022','前缀打分器（价值函数）','概率 × exp(λV)','每一步或分块','无','bg','VFD 比较的基线','arxiv','需训练辅助组件'],
+['value','VAS','Value Augmented Sampling for Language Model Alignment and Personalization','2024','https://arxiv.org/abs/2405.06639','价值函数','概率 × exp(λV)','每一步','无','bg','','arxiv','需训练辅助组件'],
+['value','ARGS','ARGS: Alignment as Reward-Guided Search','ICLR 2024','https://arxiv.org/abs/2402.01694','奖励模型','候选打分（加法）','每一步 top-K','无','bg','VFD、GGRO 比较的基线','arxiv','需训练辅助组件'],
+['value','CARDS','Cascade Reward Sampling for Efficient Decoding-Time Alignment','COLM 2025','https://arxiv.org/abs/2406.16306','奖励模型','按片段拒绝采样','按片段','无','bg','','arxiv','需训练辅助组件'],
+['value','STARS','Segment-level token alignment with rejection sampling（arXiv 现标题不同，见页脚）','2025','https://arxiv.org/abs/2511.03827','奖励模型','按片段拒绝采样','按片段','无','bg','','arxiv','需训练辅助组件'],
+['value','GenARM','GenARM: Reward Guided Generation with Autoregressive Reward Model for Test-time Alignment','ICLR 2025','https://arxiv.org/abs/2410.08193','逐词奖励模型','对数','每一步','无','bg','','arxiv','需训练辅助组件'],
+['value','DeAL','DeAL: Decoding-time Alignment for Large Language Models','2024','https://arxiv.org/abs/2402.06147','对齐目标 + 搜索','启发式搜索','每一步','无','bg','','arxiv','未核对'],
+['value','Transfer Q*','Transfer Q Star: Principled Decoding for LLM Alignment','NeurIPS 2024','https://arxiv.org/abs/2405.20495','借另一个对齐模型估计 Q 函数','概率 × exp(Q)','每一步','有次优性分析','bg','','arxiv','现成辅助模型'],
+['value','RMOD','Robust Multi-Objective Controlled Decoding of Large Language Models','2025','https://arxiv.org/abs/2503.08796','多个目标的价值估计','概率加权','每一步','关注最弱目标','bg','多目标安全任务的基线','arxiv','需训练辅助组件'],
+['value','GGRO','Gradient-Guided Reward Optimization for Inference-time Alignment','2026','https://arxiv.org/abs/2606.09635','奖励模型对输入的梯度','插入推动词 + 片段级 Best-of-N','熵超过阈值时','无','borrow','用熵决定什么时候出手','read','需训练辅助组件'],
+['value','语义概率控制','Semantic Probabilistic Control of Language Models','2025','https://arxiv.org/abs/2505.01954','整句验证器的梯度','概率','每一步','近似条件采样','borrow','对应「在意思层面比，不在字符串层面比」','arxiv','未核对'],
+['value','LARA','Safe Inference-Time Alignment via Lagrangian Reward Augmentation','2026','https://arxiv.org/abs/2607.02781','奖励 + 安全约束（拉格朗日）','奖励改写','—','对逐词方法只是校准过的启发式','bg','','arxiv','需训练辅助组件'],
+['value','奖励引导的推测解码','Reward-Guided Speculative Decoding for Efficient LLM Reasoning','ICML 2025','https://arxiv.org/abs/2501.19324','过程奖励模型','草稿接受规则','每一步','无','bg','','arxiv','需训练辅助组件'],
+['value','Best-of-N','生成 N 条完整回答，按奖励选最好的','方法族','','奖励模型','整句重排','整句','无','bg','','fam','需训练辅助组件'],
+['value','奖励加权重采样 / 拒绝采样','按奖励或接受概率筛选候选','方法族','','奖励模型','整句或片段筛选','整句或片段','无','bg','另见 QRS（准拒绝采样），有更明确的理论区分','fam','未核对'],
+['select','VFD（按价值过滤）','Selective Safety Steering via Value-Filtered Decoding','2026','https://arxiv.org/abs/2605.14746','价值探针 V_t（需要标签训练）','候选筛选：只在 V̂_t ≥ c 的词里按原模型比例重新归一化；K 次候选都不达标时退回价值最高的那个','只有 V_t < c 的词被禁','只对真实价值函数：安全期望不降、误干预率有上界（Ville 不等式）；用学到的探针时，共形校准只控制交换性条件下的边际误干预率','borrow','骨架相似（排除一些词再按原比例归一化），但排除依据是训练出的价值探针，不是第二个分布；可借鉴开关和误干预保证','read','需训练辅助组件'],
+['select','CARE','CARE: Decoding Time Safety Alignment via Rollback and Introspection Intervention','NeurIPS 2025','https://arxiv.org/abs/2509.06982','守卫模型','回滚 + 自我反思重写','守卫模型报警时','无','borrow','「检测、回滚、干预」能让对比解码在不伤质量的情况下提升安全','arxiv','需训练辅助组件'],
+['select','TAD','TAD: Token-Adaptive Contrastive Decoding with Confidence-Guided Gating','2026','https://arxiv.org/abs/2609.07286','置信度','对数','开关决定每个词是否对比','无','bg','音频语言模型','arxiv','未核对'],
+['select','What RL Brings','What RL Brings to Reasoning: A Few Decisions the Base Model Would Not Make','2026','https://arxiv.org/abs/2610.24663','RL 模型的贪心选择','候选替换','两个模型贪心选择不同的约 4% 位置','无','borrow','只在少数位置动就能找回 90% 的提升','arxiv','现成辅助模型'],
+['select','Conformal Policy Control','Conformal Policy Control','2026','https://arxiv.org/abs/2603.02196','安全参考策略','策略混合','—','有限样本风险控制','borrow','VFD 校准方法的来源','arxiv','未核对'],
+['select','Avoidance Decoding','Avoidance Decoding for Diverse Multi-Branch Story Generation','EMNLP 2025','https://doi.org/10.18653/v1/2025.emnlp-main.381','和已生成分支的相似度','对数惩罚','每一步，早期看概念、后期看情节','无','borrow','「避开以前的输出」，和失败记忆的想法相关','pub','未核对'],
+['seq','SMC Steering（LLaMPPL）','Sequential Monte Carlo Steering of Large Language Models using Probabilistic Programs','2023','https://arxiv.org/abs/2306.03081','约束（势函数）','整句（粒子重采样）','每一步重采样','渐近精确','borrow','精确采样整句目标的正统做法','arxiv','不训练'],
+['seq','Twisted SMC','Probabilistic Inference in Language Models via Twisted Sequential Monte Carlo','ICML 2024','https://arxiv.org/abs/2404.17546','学到的扭转函数（对未来的估计）','整句','每一步','渐近精确','borrow','修补整句塌缩最正统的路：加对未来的估计','arxiv','需训练辅助组件'],
+['seq','自蒸馏 Twisted SMC','Improving Constrained Language Generation via Self-Distilled Twisted SMC','2025','https://arxiv.org/abs/2507.02315','自蒸馏的扭转函数','整句','每一步','渐近精确','bg','','arxiv','需训练辅助组件'],
+['seq','SMC 句法与语义控制','Syntactic and Semantic Control of Large Language Models via Sequential Monte Carlo','ICLR 2025','https://arxiv.org/abs/2504.13139','约束势函数','整句','每一步','渐近精确','bg','','arxiv','未核对'],
+['seq','SMC 模型集成','Ensembling Language Models with Sequential Monte Carlo','2026','https://arxiv.org/abs/2603.05432','多个模型','整句','每一步','渐近精确','bg','','arxiv','未核对'],
+['seq','ByteSampler','Sampling from Your Language Model One Byte at a Time','2025','https://arxiv.org/abs/2506.14123','—','字节级','—','—','bg','让不同词表的模型能逐字节组合（Anchored Decoding 用到）','arxiv','未核对'],
+['bound','Anchored Decoding','Anchored Decoding: Provably Reducing Copyright Risk for Any Language Model','2026','https://arxiv.org/abs/2602.07120','许可证干净的安全模型','对数（几何插值 p_s^{λ/(1+λ)}·p_r^{1/(1+λ)}，每步 KL 约束）','每一步，预算自适应分配到整条轨迹','整句 KL(p*‖p_s) ≤ K（KL 链式法则），预算可滚动','borrow','把有风险的模型拉向安全模型；只插值不外推，有整句预算','formula','需训练辅助组件'],
+['bound','LaVGuard','LaVGuard: Selective Decoding for Contextual Value Drift','2026','https://arxiv.org/abs/2610.29135','价值画像 + 候选续写的带符号进展','对数指数倾斜 p·e^{αd}，方向来自训练过的价值探针','开关决定何时评估','整句 KL ≤ B_KL，进而 TV ≤ √(B_KL/2)','borrow','开关 + 两个预算；方向不来自第二个分布','formula','未核对'],
+['bound','What the Model Cannot See','What the Model Cannot See: Covert and Provable Text Invisibility in LLMs','2026','https://arxiv.org/abs/2610.15883','被标记的文本片段','阻断信息流','—','被屏蔽片段之外的激活逐位不变','bg','运行时硬隔离的另一种实现','arxiv','未核对'],
+['bound','DPS-MOZO','Differentially Private In-context Learning via Sampling Few-shot Mixed with Zero-shot Outputs','2025','https://arxiv.org/abs/2501.19287','看私密示例 vs 不看示例（零样本）','对数（单样本与零样本 logit 混合，λ 由 Rényi 散度上限决定）','每一步','差分隐私','borrow','不是逐点上限 q ≤ e^ε·p，而是投影到 Rényi 球；对数空间','formula','不训练'],
+['bound','DP-Decoding','Differentially Private Decoding in Large Language Models','2022','https://arxiv.org/abs/2205.13621','均匀分布','概率混合','每一步','差分隐私','bg','','arxiv','不训练'],
+['bound','RAG + 差分隐私','RAG with Differential Privacy','2024','https://arxiv.org/abs/2412.19291','每次只带一篇文档的多个分布','指数机制聚合','每一步','差分隐私','bg','','arxiv','未核对'],
+['bound','BLOOMSCRUB','Certified Mitigation of Worst-Case LLM Copyright Infringement','EMNLP 2025','https://doi.org/10.18653/v1/2025.emnlp-main.1784','长引文检测','检测 + 改写','检测到时','认证式移除','bg','','pub','未核对'],
+['bound','Privacy-Aware Decoding','Mitigating Privacy Leakage of LLMs in Retrieval-Augmented Generation','2026','https://doi.org/10.1145/3770855.3817665','—','—','—','—','bg','只找到出版记录，没有摘要','pub','未核对'],
+['diff','掩码扩散的 CFG','Improving Classifier-Free Guidance in Masked Diffusion: Low-Dim Theoretical Insights with High-Dim Impact','2025','https://arxiv.org/abs/2507.08965','有条件 vs 无条件','速率矩阵','早期引导有害，后期有益','有低维理论分析','borrow','','arxiv','需训练辅助组件'],
+['diff','Commitment Before Realization','When Classifier-Free Guidance Becomes Unnecessary in Masked Diffusion Language Models','2026','https://arxiv.org/abs/2608.08082','有条件 vs 无条件','对数','每个提示过了某个时间点后关掉','非劣效检验','borrow','「什么时候可以不动」','arxiv','需训练辅助组件'],
+['diff','动态负向引导','Dynamic Negative Guidance of Diffusion Models','2024','https://arxiv.org/abs/2410.14398','负向提示','噪声预测','强度随时间和内容变化','无','bg','图像','arxiv','未核对'],
+['diff','VLM 引导的动态负向提示','Dynamic VLM-Guided Negative Prompting for Diffusion Models','2025','https://arxiv.org/abs/2510.26052','视觉语言模型生成的负向提示','噪声预测','动态','无','bg','图像','arxiv','未核对'],
+['diff','VSF','VSF: Negative Guidance in Few-Step Image Generation Models By Value Sign Flip','2025','https://arxiv.org/abs/2508.10931','负向提示','注意力值取反','—','无','bg','图像','arxiv','未核对'],
+['diff','概念移除引导','Concept Removal Guidance: Evidence-Calibrated Negative Guidance for Safe Diffusion Sampling','2026','https://arxiv.org/abs/2606.29801','证据校准的负向引导','噪声预测','按证据强度','无','bg','图像','arxiv','未核对'],
+['param','Task Arithmetic','Editing Models with Task Arithmetic','ICLR 2023','https://arxiv.org/abs/2212.04089','任务向量','参数（相减可遗忘）','—','—','bg','权重空间的「Signed」','arxiv','需训练辅助组件'],
+['param','ExPO','Model Extrapolation Expedites Alignment','2024','https://arxiv.org/abs/2404.16792','对齐前后的权重','参数外推 (1+a)θ₁ − aθ₀','—','—','bg','','arxiv','现成辅助模型'],
+['param','NPO','Negative Preference Optimization: From Catastrophic Collapse to Effective Unlearning','COLM 2024','https://arxiv.org/abs/2404.05868','要遗忘的数据','训练（有界负权重）','—','—','bg','有界负权重的训练方法','arxiv','—'],
+['param','Unlikelihood Training','Neural Text Generation with Unlikelihood Training','ICLR 2020','https://arxiv.org/abs/1908.04319','负样本','训练','—','—','bg','','arxiv','—'],
+['param','上下文蒸馏','Learning by Distilling Context','2022','https://arxiv.org/abs/2209.15189','带上下文时的输出','训练','—','—','borrow','','arxiv','—'],
+['fusion','kNN-LM','Generalization through Memorization: Nearest Neighbor Language Models','ICLR 2020','https://arxiv.org/abs/1911.00172','检索得到的近邻分布','概率插值（推理时融合近邻分布）','每一步','—','bg','推理时的概率融合','arxiv','不训练'],
+['param','CDD（对比解码做模型差异分析）','Reading the Finetuning Prior: Verbatim Content Recovery via Contrastive Decoding Diffing','2026','https://arxiv.org/abs/2605.25902','基础模型 vs 微调模型','对数','每一步','—','bg','把对比解码用作分析工具','arxiv','未核对'],
+['param','logit 组合的理论','Compositional Generalization in Autoregressive Models via Logit Composition','2026','https://arxiv.org/abs/2605.28304','多个模型','对数','—','条件可分解时各自控制各自的子空间','borrow','可用于讨论概率空间 vs 对数空间','arxiv','未核对'],
+['general','Nucleus（top-p）','The Curious Case of Neural Text Degeneration','ICLR 2020','https://arxiv.org/abs/1904.09751','—','截断','每一步','—','bg','','arxiv','不训练'],
+['general','Min-p','Turning Up the Heat: Min-p Sampling for Creative and Coherent LLM Outputs','2024','https://arxiv.org/abs/2407.01082','—','截断','每一步','—','bg','和「合理词过滤」同一类做法','arxiv','不训练'],
+['general','Contrastive Search','A Contrastive Framework for Neural Text Generation','NeurIPS 2022','https://arxiv.org/abs/2202.06417','与已生成内容的相似度','候选打分','每一步','—','bg','名字相近，和对比解码不是一回事','arxiv','不训练'],
+['contrast','MMI 解码','A Diversity-Promoting Objective Function for Neural Conversation Models','NAACL 2016','https://arxiv.org/abs/1510.03055','无条件语言模型 p(T)','对数','每一步或重排','无','bg','log p(T|S) − λ log p(T)，最早的两分支相减之一','arxiv','不训练'],
+['contrast','Coherence Boosting','Coherence boosting: When your pretrained language model is not paying enough attention','ACL 2022','https://arxiv.org/abs/2110.08294','完整上下文 vs 截短上下文','对数','每一步','无','bg','长短两个上下文外推，结构同构但在对数空间','arxiv','不训练'],
+['contrast','CPMI','Mutual Information Alleviates Hallucinations in Abstractive Summarization','2022','https://arxiv.org/abs/2210.13210','有 / 无源文档的条件 PMI','对数','熵高时才减','无','borrow','只在不确定时减去无条件分支，相当于自适应强度','arxiv','不训练'],
+['contrast','PREADD','PREADD: Prefix-Adaptive Decoding for Controlled Text Generation','Findings ACL 2023','https://arxiv.org/abs/2307.03214','加属性前缀 vs 原提示','对数','每一步','无','bg','正负前缀的 logit 差乘系数','arxiv','不训练'],
+['contrast','Model Arithmetic','Controlled Text Generation via Language Model Arithmetic','ICLR 2024','https://arxiv.org/abs/2311.14479','多个提示 / 模型 / 分类器的组合公式','对数（所有加减；union/intersection 是逐词取 max/min）','每一步','无','bg','「线性组合」实际是对数概率的组合，没有概率差','formula','不训练'],
+['contrast','Instructive Decoding','Instructive Decoding: Instruction-Tuned Large Language Models are Self-Refiner from Noisy Instructions','ICLR 2024','https://arxiv.org/abs/2311.00233','噪声或相反指令下的输出','对数','每一步','无','bg','负分支是扰动过的指令','arxiv','不训练'],
+['contrast','CID（对比输入解码）','Surfacing Biases in Large Language Models using Contrastive Input Decoding','2023','https://arxiv.org/abs/2305.07378','只差一处的两个输入','对数','每一步','无','bg','用于揭示偏差，不是纠正','arxiv','不训练'],
+['contrast','Speculative CD','Speculative Contrastive Decoding','2023','https://arxiv.org/abs/2311.08981','小草稿模型作业余分支','对数','投机解码的验证步','无','bg','对比解码与投机解码合并','arxiv','现成辅助模型'],
+['contrast','Distillation CD','Distillation Contrastive Decoding: Improving LLMs Reasoning with Contrastive Decoding and Distillation','2024','https://arxiv.org/abs/2402.14874','错误思维链提示 + dropout / 量化','对数','每一步','无','bg','用扰动自身构造负分支，不需另一模型','arxiv','不训练'],
+['contrast','SPA（选择性提示锚定）','Selective Prompt Anchoring for Code Generation','ICML 2025','https://arxiv.org/abs/2408.09121','遮掉锚定文本前后的 logit 差','对数','每一步','无','bg','带掩码的上下文作负分支','arxiv','不训练'],
+['contrast','HICD','HICD: Hallucination-Inducing via Attention Dispersion for Contrastive Decoding to Mitigate Hallucinations in Large Language Models','2025','https://arxiv.org/abs/2503.12908','注意力分散诱导出的幻觉分支','对数','每一步','无','bg','负分支由同一模型改注意力得到','arxiv','不训练'],
+['contrast','SH2','SH2: Self-Highlighted Hesitation Helps You Decode More Truthfully','2024','https://arxiv.org/abs/2401.05930','有无强调低概率关键词的两种上下文','对数','每一步','无','bg','','arxiv','不训练'],
+['contrast','DeCK','Decoding by Contrasting Knowledge: Enhancing LLMs\' Confidence on Edited Facts','2024','https://arxiv.org/abs/2405.11613','有 / 无编辑后知识的上下文','对数','每一步','无','bg','知识编辑场景的两上下文对比','arxiv','不训练'],
+['contrast','Linear Alignment','Linear Alignment: A Closed-form Solution for Aligning Human Preferences without Tuning and Feedback','ICLR 2024','https://arxiv.org/abs/2401.11458','有 / 无偏好原则提示的分布差','对数','每一步','一阶近似闭式解','bg','两个提示的分布差外推','arxiv','不训练'],
+['contrast','OPAD','On-the-fly Preference Alignment via Principle-Guided Decoding','2025','https://arxiv.org/abs/2502.14204','有 / 无原则提示的 KL 作为替代奖励','对数','每一步','无','bg','','arxiv','不训练'],
+['contrast','Air-Decoding','Air-Decoding: Attribute Distribution Reconstruction for Decoding-Time Controllable Text Generation','EMNLP 2023','https://arxiv.org/abs/2310.14892','属性前缀条件语言模型','概率（重加权）','每一步','无','bg','在概率空间重建正负属性分布后重加权','arxiv','需训练辅助组件'],
+['contrast','Self-Debiasing','Self-Diagnosis and Self-Debiasing: A Proposal for Reducing Corpus-Based Bias in NLP','TACL 2021','https://arxiv.org/abs/2103.00453','描述不良行为的负提示','概率（Δ = p − p_负提示，Δ<0 的词乘 e^{λΔ}，下限 0.01）','每一步','无','borrow','两上下文、概率差，但只是乘性降权，不外推、不提升任何词','formula','不训练'],
+['contrast','VCD（视觉对比解码）','Mitigating Object Hallucinations in Large Vision-Language Models through Visual Contrastive Decoding','CVPR 2024','https://arxiv.org/abs/2311.16922','原图 vs 加噪图','对数','每一步','无','bg','多模态的两上下文对比，影响很大','arxiv','不训练'],
+['contrast','M3ID','Multi-Modal Hallucination Control by Visual Information Grounding','CVPR 2024','https://arxiv.org/abs/2403.14003','有 / 无图像的互信息','对数','每一步，强度随长度变','无','borrow','随生成长度调对比强度，类似随时间变的 a','arxiv','不训练'],
+['contrast','RVCD','Retrieval Visual Contrastive Decoding to Mitigate Object Hallucinations in Large Vision-Language Models','2025','https://arxiv.org/abs/2505.20569','检索到的正、负参考图像','对数','每一步','无','bg','同时用正负两类参考','arxiv','不训练'],
+['rag','CoCoA','CoCoA: Confidence- and Context-Aware Adaptive Decoding for Resolving Knowledge Conflicts in Large Language Models','EMNLP 2025','https://aclanthology.org/2025.emnlp-main.348/','置信度 + 上下文与先验的分布差','对数（自适应）','按冲突程度','无','base','RAG 知识冲突任务应与 CAD、AdaCAD 一起比较','pub','不训练'],
+['rag','AutoPASTA','Model Tells Itself Where to Attend: Faithfulness Meets Automatic Attention Steering','2024','https://arxiv.org/abs/2409.10790','模型自选的关键上下文句','注意力 / 隐藏状态','所选注意力头每步','无','bg','靠加强注意力，不用负分支','arxiv','不训练'],
+['rag','CLeHe（熵加权 RAG 解码）','Entropy-Based Decoding for Retrieval-Augmented Large Language Models','2024','https://arxiv.org/abs/2406.17519','多文档按熵加权 + 与参数知识对比','概率 + 对数','每一步','无','bg','','arxiv','不训练'],
+['rag','TACS','Truth-Aware Context Selection: Mitigating Hallucinations of Large Language Models Being Misled by Untruthful Contexts','2024','https://arxiv.org/abs/2403.07556','表征探针判断上下文真伪','候选筛选（屏蔽上下文）','生成前','无','bg','筛上下文，不混合两路分布','arxiv','需训练辅助组件'],
+['rag','PH3（剪头解决冲突）','Cutting Off the Head Ends the Conflict: A Mechanism for Interpreting and Mitigating Knowledge Conflicts in Language Models','2024','https://arxiv.org/abs/2402.18154','记忆头与上下文头','隐藏状态','推理时剪掉选定的头','无','bg','','arxiv','不训练'],
+['rag','IRCAN','IRCAN: Mitigating Knowledge Conflicts in LLM Generation via Identifying and Reweighting Context-Aware Neurons','2024','https://arxiv.org/abs/2406.18406','上下文敏感神经元','隐藏状态','推理时放大','无','bg','','arxiv','不训练'],
+['rag','JUICE','Taming Knowledge Conflicts in Language Models','2025','https://arxiv.org/abs/2503.10996','双路注意力头干预','隐藏状态','按目标调头','无','bg','可偏向上下文或参数知识','arxiv','不训练'],
+['rag','REPLUG','REPLUG: Retrieval-Augmented Black-Box Language Models','NAACL 2024','https://arxiv.org/abs/2301.12652','多个检索文档按相关度加权','概率（混合）','每一步','无','bg','多上下文的正权重概率混合','arxiv','不训练'],
+['rag','FLARE','Active Retrieval Augmented Generation','EMNLP 2023','https://arxiv.org/abs/2305.06983','低置信词触发检索','其他（检索）','置信低于阈值时','无','borrow','按置信决定何时干预的代表','arxiv','不训练'],
+['rag','Lookback Lens','Lookback Lens: Detecting and Mitigating Contextual Hallucinations in Large Language Models Using Only Attention Maps','EMNLP 2024','https://arxiv.org/abs/2407.07071','注意力比例分类器','候选筛选','按片段','无','bg','','arxiv','需训练辅助组件'],
+['rag','Integrative Decoding','Integrative Decoding: Improve Factuality via Implicit Self-consistency','ICLR 2025','https://arxiv.org/abs/2410.01556','以多份采样回答为前缀的分支','对数（求和）','每一步','无','bg','多个正分支相加，没有负分支','arxiv','不训练'],
+['safety','SafeInfer','SafeInfer: Context Adaptive Decoding Time Safety Alignment for Large Language Models','2024','https://arxiv.org/abs/2406.12274','安全示范激活 + 不安全模型分布','对数 + 隐藏状态','每一步','无','bg','含减去有害模型分布的一步','arxiv','现成辅助模型'],
+['safety','Adversarial CD','Safety Alignment of Large Language Models via Contrasting Safe and Harmful Distributions','2024','https://arxiv.org/abs/2406.16743','优化出的安全 / 对抗提示','对数','每一步','无','bg','同模型两提示对比','arxiv','需训练辅助组件'],
+['safety','Self-CD（缓解过度拒答）','Navigating the OverKill in Large Language Models','ACL 2024','https://arxiv.org/abs/2401.17633','强调安全的系统提示下的分布','对数','每一步','无','bg','减去拒答分支','arxiv','不训练'],
+['safety','AdaCD（过度拒答）','Please refuse to answer me! Mitigating Over-Refusal in Large Language Models via Adaptive Contrastive Decoding','2026','https://arxiv.org/abs/2604.17132','不同安全级别系统提示的分布','对数','每一步，自适应加或减','无','borrow','符号可变的对比强度','arxiv','不训练'],
+['safety','SafeCoDe','Steering Multimodal Large Language Models Decoding for Context-Aware Safety','2025','https://arxiv.org/abs/2509.19212','真实图与噪声图下的分布差','对数','每一步','无','bg','多模态安全','arxiv','不训练'],
+['safety','AED','Alignment-Enhanced Decoding:Defending via Token-Level Adaptive Refining of Probability Distributions','2024','https://arxiv.org/abs/2408.07663','模型自评 + Competitive Index','对数（自适应混合）','按 token 自适应','无','base','安全实验时考虑：什么时候干预、干预多强','arxiv','不训练'],
+['safety','Emulated Disalignment','Emulated Disalignment: Safety Alignment for Large Language Models May Backfire!','ACL 2024','https://arxiv.org/abs/2402.12343','对齐模型 vs 预训练模型','对数','每一步','无','bg','把对齐差值反向使用，相当于 a 取负号；提示负系数的风险','arxiv','现成辅助模型'],
+['safety','Weak-to-Strong Jailbreaking','Weak-to-Strong Jailbreaking on Large Language Models','2024','https://arxiv.org/abs/2401.17256','小不安全模型 / 小安全模型比值','对数','每一步','无','bg','代理调优的攻击用法','arxiv','现成辅助模型'],
+['safety','SafeNudge','Safeguarding Large Language Models in Real-time with Tunable Safety-Performance Trade-offs','2025','https://arxiv.org/abs/2501.02018','有害检测器触发的安全提示插入','整句（插入文本）','检测到越狱时','无','bg','','arxiv','需训练辅助组件'],
+['safety','InferenceGuard','On Almost Surely Safe Alignment of Large Language Models at Inference-Time','2025','https://arxiv.org/abs/2502.01208','潜空间安全状态 + 安全评论器','候选筛选（约束 MDP）','每一步','几乎必然安全（在其假设下）','bg','','arxiv','需训练辅助组件'],
+['safety','RAIN','RAIN: Your Language Models Can Align Themselves without Finetuning','ICLR 2024','https://arxiv.org/abs/2309.07124','模型自评 + 回退搜索','候选筛选','逐 token 集搜索','无','bg','','arxiv','不训练'],
+['proxy','DeRa','Decoding-time Realignment of Language Models','ICML 2024','https://arxiv.org/abs/2402.02992','对齐模型与参考模型','对数（几何混合 softmax(λh_对齐 + (1−λ)h_参考)，λ 可大于 1）','每一步','近似 KL 正则最优解','bg','对数空间外推，不会删掉任何词；逐词采样只是整句目标的近似','formula','现成辅助模型'],
+['proxy','MOD','Decoding-Time Language Model Alignment with Multiple Objectives','NeurIPS 2024','https://arxiv.org/abs/2406.18853','多个单目标对齐模型','对数（允许负权重）','每一步','f-散度下的闭式解','bg','多目标解码；页面原已有 RMOD','arxiv','现成辅助模型'],
+['proxy','IPA','Inference-Time Policy Adapters (IPA): Tailoring Extreme-Scale LMs without Fine-tuning','EMNLP 2023','https://arxiv.org/abs/2305.15065','RL 训练的小适配器策略','概率乘积','每一步','无','bg','只有正分支','arxiv','需训练辅助组件'],
+['proxy','IVG','Inference-Time Language Model Alignment via Integrated Value Guidance','2024','https://arxiv.org/abs/2409.17819','隐式（调优前后对数差）+ 显式价值','对数','token 与块级','无','bg','','arxiv','现成辅助模型'],
+['proxy','WSD','Well Begun is Half Done: Low-resource Preference Alignment by Weak-to-Strong Decoding','2025','https://arxiv.org/abs/2506.07434','小对齐模型起草开头','整句（按片段切换模型）','开头片段','无','bg','','arxiv','现成辅助模型'],
+['proxy','Co-LLM','Learning to Decode Collaboratively with Multiple Language Models','ACL 2024','https://arxiv.org/abs/2403.03870','学到的逐 token 延迟决策','候选筛选（选模型）','每一步','无','bg','选择而非线性组合','arxiv','需训练辅助组件'],
+['proxy','ICDPO','Instantly Learning Preference Alignment via In-context DPO','NAACL 2025','https://aclanthology.org/2025.naacl-long.8/','in-context learning 前后的模型构造偏好分','整句（评分后选择）','整句','无','bg','属于评分与选择，不是逐 token 概率相减','pub','不训练'],
+['fusion','DeePEn','Ensemble Learning for Heterogeneous Large Language Models with Deep Parallel Collaboration','NeurIPS 2024','https://arxiv.org/abs/2404.12715','多模型分布映射到相对表示','概率（集成）','每一步','无','bg','异构词表的概率集成','arxiv','不训练'],
+['fusion','EVA','Bridging the Gap between Different Vocabularies for LLM Ensemble','2024','https://arxiv.org/abs/2404.09492','词表对齐后的多模型分布','概率（集成）','每一步','无','borrow','解决两个模型词表不一致；双模型 Signed 会用到','arxiv','不训练'],
+['fusion','跨词表逐 token 集成','Token-level Ensembling of Models with Different Vocabularies','2025','https://arxiv.org/abs/2502.21265','字符串层对齐的多模型分布','概率（集成）','每一步','无','borrow','可用于跨词表的负分支','arxiv','不训练'],
+['fusion','Pack of LLMs','Pack of LLMs: Model Fusion at Test-Time via Perplexity Optimization','2024','https://arxiv.org/abs/2404.11531','按输入困惑度定权重','概率（混合）','每一步','无','bg','','arxiv','不训练'],
+['fusion','SAFE（何时集成）','When to Ensemble: Identifying Token-Level Points for Stable and Fast LLM Ensembling','2025','https://arxiv.org/abs/2510.15346','模型间分歧 / 分词一致性','概率（集成）','只在选定位置','无','borrow','只在部分位置组合，对应「什么时候动」','arxiv','不训练'],
+['fusion','AdaFuse','AdaFuse: Adaptive Ensemble Decoding with Test-Time Scaling for LLMs','2026','https://arxiv.org/abs/2601.06022','不确定性决定融合粒度','候选筛选','按片段自适应','无','bg','','arxiv','不训练'],
+['unlearn','ULD','Reversing the Forget-Retain Objectives: An Efficient LLM Unlearning Framework from Logit Difference','2024','https://arxiv.org/abs/2406.08607','记住遗忘集的辅助模型','对数（相减）','每一步','无','bg','原模型减辅助模型的 logit','arxiv','需训练辅助组件'],
+['unlearn','Divergence Decoding','Divergence Decoding: Inference-Time Unlearning via Auxiliary Models','2026','https://arxiv.org/abs/2605.31293','小辅助模型之间的分布差','对数','每一步','无','bg','','arxiv','需训练辅助组件'],
+['unlearn','In-Context Unlearning','In-Context Unlearning: Language Models as Few Shot Unlearners','ICML 2024','https://arxiv.org/abs/2310.07579','翻转标签的上下文示例','其他（只改提示）','提示层','无','bg','','arxiv','不训练'],
+['unlearn','ECO Prompts','Large Language Model Unlearning via Embedding-Corrupted Prompts','NeurIPS 2024','https://arxiv.org/abs/2406.07933','分类器检测 + 破坏提示嵌入','隐藏状态','检测到遗忘目标时','无','bg','','arxiv','需训练辅助组件'],
+['unlearn','MemFree','Preventing Verbatim Memorization in Language Models Gives a False Sense of Privacy','INLG 2023','https://arxiv.org/abs/2210.17546','训练集 n-gram 布隆过滤器','候选筛选（硬屏蔽）','命中时','保证不逐字复现','bg','相当于 p₋ 是指示函数','arxiv','不训练'],
+['internal','Autocontrastive Decoding','The Benefits of Bad Advice: Autocontrastive Decoding across Model Layers','ACL 2023','https://arxiv.org/abs/2305.01628','浅层出口作为业余分支','对数','每一步','无','bg','负分支来自同一模型浅层','arxiv','需训练辅助组件'],
+['internal','EGED','Entropy Guided Extrapolative Decoding to Improve Factuality in Large Language Models','2024','https://arxiv.org/abs/2404.09338','层间外推 + 按熵选层','对数','每一步','无','bg','','arxiv','不训练'],
+['act','PASTA','Tell Your Model Where to Attend: Post-hoc Attention Steering for LLMs','ICLR 2024','https://arxiv.org/abs/2311.02262','用户标注的强调片段','注意力 / 隐藏状态','所选注意力头每步','无','bg','','arxiv','不训练'],
+['act','SpARE','Steering Knowledge Selection Behaviours in LLMs via SAE-Based Representation Engineering','NAACL 2025','https://arxiv.org/abs/2410.15999','SAE 中知识选择相关的特征','隐藏状态','推理时编辑中间层','无','bg','','arxiv','需训练辅助组件'],
+['act','TruthX','TruthX: Alleviating Hallucinations by Editing Large Language Models in Truthful Space','ACL 2024','https://arxiv.org/abs/2402.17811','自编码器里的真实性子空间','隐藏状态','每一步','无','bg','','arxiv','需训练辅助组件'],
+['act','Truth Forest','Truth Forest: Toward Multi-Scale Truthfulness in Large Language Models through Intervention without Tuning','AAAI 2024','https://arxiv.org/abs/2312.17484','多个正交真实性探针方向','隐藏状态','每一步','无','bg','','arxiv','需训练辅助组件'],
+['act','NL-ITI','Non-Linear Inference Time Intervention: Improving LLM Truthfulness','2024','https://arxiv.org/abs/2403.18680','非线性探针选头与方向','隐藏状态','每一步','无','bg','','arxiv','需训练辅助组件'],
+['act','LITO','Enhanced Language Model Truthfulness with Learnable Intervention and Uncertainty Expression','2024','https://arxiv.org/abs/2405.00301','多种干预强度下的置信度','隐藏状态','选强度，低置信时拒答','无','borrow','按样本选干预强度','arxiv','需训练辅助组件'],
+['act','ACT（自适应激活引导）','Adaptive Activation Steering: A Tuning-Free LLM Truthfulness Improvement Method for Diverse Hallucinations Categories','2024','https://arxiv.org/abs/2406.00034','按幻觉类型聚类的多个方向','隐藏状态','按激活自适应强度','无','borrow','自适应强度，类似自适应 a','arxiv','需训练辅助组件'],
+['act','TruthFlow','TruthFlow: Truthful LLM Generation via Representation Flow Correction','2025','https://arxiv.org/abs/2502.04556','流匹配学到的查询相关修正','隐藏状态','每次查询','无','bg','','arxiv','需训练辅助组件'],
+['act','SADI','Semantics-Adaptive Activation Intervention for LLMs via Dynamic Steering Vectors','2024','https://arxiv.org/abs/2410.12299','正负样本激活差 + 输入语义','隐藏状态','按输入动态构造','无','bg','激活空间的正负对比','arxiv','不训练'],
+['act','Mean-Centring','Improving Activation Steering in Language Models with Mean-Centring','2023','https://arxiv.org/abs/2312.03813','目标激活均值减总体均值','隐藏状态','每一步','无','bg','','arxiv','不训练'],
+['act','ICV（上下文向量）','In-context Vectors: Making In Context Learning More Effective and Controllable Through Latent Space Steering','ICML 2024','https://arxiv.org/abs/2311.06668','示例对激活差的主方向','隐藏状态','每一步','无','bg','把上下文对比压成激活向量','arxiv','不训练'],
+['act','BiPO','Personalized Steering of Large Language Models: Versatile Steering Vectors Through Bi-directional Preference Optimization','NeurIPS 2024','https://arxiv.org/abs/2406.00045','偏好优化学到的方向','隐藏状态','推理时加正或负倍数','无','bg','正负倍数控制方向','arxiv','需训练辅助组件'],
+['act','Representation Surgery','Representation Surgery: Theory and Practice of Affine Steering','ICML 2024','https://arxiv.org/abs/2402.09631','概念条件分布的仿射对齐','隐藏状态','每一步','最优仿射变换的理论刻画','bg','','arxiv','需训练辅助组件'],
+['act','Linear-AcT','Controlling Language and Diffusion Models by Transporting Activations','ICLR 2025','https://arxiv.org/abs/2410.23054','源到目标激活的最优传输映射','隐藏状态','每一步，强度可调','无','bg','','arxiv','需训练辅助组件'],
+['act','SEA（谱编辑）','Spectral Editing of Activations for Large Language Model Alignment','NeurIPS 2024','https://arxiv.org/abs/2405.09719','正负示范激活的谱分解','隐藏状态','推理时投影','无','bg','保留正方向、去掉负方向','arxiv','不训练'],
+['act','KTS','Steering Without Side Effects: Improving Post-Deployment Control of Language Models','2024','https://arxiv.org/abs/2406.15518','训练后的引导向量','隐藏状态','需要时加入','无','bg','减小引导的副作用','arxiv','需训练辅助组件'],
+['act','指令遵循的激活引导','Improving Instruction-Following in Language Models through Activation Steering','ICLR 2025','https://arxiv.org/abs/2410.12877','有无指令输入的激活差','隐藏状态','每一步','无','bg','两种上下文的激活差，CAD 的激活版','arxiv','不训练'],
+['act','SAE-TS','Improving Steering Vectors by Targeting Sparse Autoencoder Features','2024','https://arxiv.org/abs/2411.02193','目标 SAE 特征的效果预测','隐藏状态','每一步','无','bg','','arxiv','需训练辅助组件'],
+['act','FGAA','Interpretable Steering of Large Language Models with Feature Guided Activation Additions','2025','https://arxiv.org/abs/2501.09929','对比样本选出的 SAE 特征','隐藏状态','每一步','无','bg','','arxiv','需训练辅助组件'],
+['act','SAS（稀疏空间引导）','Steering Large Language Model Activations in Sparse Spaces','2025','https://arxiv.org/abs/2503.00177','SAE 稀疏空间的行为向量','隐藏状态','每一步，可组合','无','bg','','arxiv','需训练辅助组件'],
+['act','SEAL','SEAL: Steerable Reasoning Calibration of Large Language Models for Free','2025','https://arxiv.org/abs/2504.07986','推理与反思思维的激活方向','隐藏状态','推理过程中','无','bg','','arxiv','不训练'],
+['act','FASB','Steering When Necessary: Flexible Steering Large Language Models with Backtracking','2025','https://arxiv.org/abs/2508.17621','探针判断偏离程度','隐藏状态','偏离时回溯并引导','无','borrow','门控 + 回溯','arxiv','需训练辅助组件'],
+['act','拒答方向','Refusal in Language Models Is Mediated by a Single Direction','NeurIPS 2024','https://arxiv.org/abs/2406.11717','有害与无害指令激活均值差','隐藏状态','推理时加或消去','无','bg','','arxiv','不训练'],
+['act','CAST','Programming Refusal with Conditional Activation Steering','ICLR 2025','https://arxiv.org/abs/2409.05907','条件向量与输入激活的相似度','隐藏状态','条件命中才加拒答向量','无','borrow','门控决定何时引导','arxiv','不训练'],
+['act','Jailbreak Antidote','Jailbreak Antidote: Runtime Safety-Utility Balance via Sparse Representation Adjustment in Large Language Models','ICLR 2025','https://arxiv.org/abs/2410.02298','安全方向的稀疏分量','隐藏状态','推理时按强度调整','无','bg','','arxiv','不训练'],
+['act','AdaSteer','AdaSteer: Your Aligned LLM is Inherently an Adaptive Jailbreak Defender','2025','https://arxiv.org/abs/2504.09466','拒绝与有害性两个方向','隐藏状态','按输入自适应系数','无','borrow','系数随输入变，类似自适应 a','arxiv','不训练'],
+['act','InferAligner','InferAligner: Inference-Time Alignment for Harmlessness through Cross-Model Guidance','2024','https://arxiv.org/abs/2401.11206','安全方向向量 + 有害判别','隐藏状态','只在判为有害时','无','borrow','条件式干预','arxiv','现成辅助模型'],
+['act','SAE 拒答引导','Steering Language Model Refusal with Sparse Autoencoders','2024','https://arxiv.org/abs/2411.11296','SAE 拒答特征','隐藏状态','推理时放大','无','bg','','arxiv','需训练辅助组件'],
+['act','SCANS','SCANS: Mitigating the Exaggerated Safety for LLMs via Safety-Conscious Activation Steering','2024','https://arxiv.org/abs/2408.11491','拒答向量 + 安全层定位','隐藏状态','按查询分类','无','bg','缓解过度拒答','arxiv','不训练'],
+['act','误拒向量消除','Surgical, Cheap, and Flexible: Mitigating False Refusal in Language Models via Single Vector Ablation','2024','https://arxiv.org/abs/2410.03415','误拒向量','隐藏状态','推理时消除方向','无','bg','','arxiv','不训练'],
+['act','Safety Arithmetic','Safety Arithmetic: A Framework for Test-time Safety Alignment of Language Models by Steering Parameters and Activations','2024','https://arxiv.org/abs/2406.11801','有害任务向量 + 安全激活','参数 + 隐藏状态','测试时','无','bg','','arxiv','需训练辅助组件'],
+['act','Persona Vectors','Persona Vectors: Monitoring and Controlling Character Traits in Language Models','2025','https://arxiv.org/abs/2507.21509','性格特质的激活方向','隐藏状态','推理时加方向','无','bg','','arxiv','不训练'],
+['act','Style Vectors','Style Vectors for Steering Generative Large Language Model','2024','https://arxiv.org/abs/2402.01618','风格激活向量','隐藏状态','推理时加向量','无','bg','','arxiv','不训练'],
+['value','PPO-MCTS','Don\'t throw away your value model! Generating more preferable text with Value-Guided Monte-Carlo Tree Search decoding','2023','https://arxiv.org/abs/2309.15028','PPO 价值模型','候选筛选（MCTS）','每一步','无','bg','','arxiv','需训练辅助组件'],
+['value','PPL-MCTS','PPL-MCTS: Constrained Textual Generation Through Discriminator-Guided MCTS Decoding','2021','https://arxiv.org/abs/2109.13582','判别器指导的蒙特卡洛树搜索','候选筛选（树搜索）','每一步，模拟未来','无','bg','树搜索式控制','arxiv','需训练辅助组件'],
+['value','RAD','Reward-Augmented Decoding: Efficient Controlled Text Generation With a Unidirectional Reward Model','EMNLP 2023','https://arxiv.org/abs/2310.09520','单向奖励模型','对数（加奖励）','每一步 top-k','无','bg','','arxiv','需训练辅助组件'],
+['value','Q*','Q*: Improving Multi-step Reasoning for LLMs with Deliberative Planning','2024','https://arxiv.org/abs/2406.14283','学到的 Q 值启发式','候选筛选（A* 搜索）','每个推理步','无','bg','','arxiv','需训练辅助组件'],
+['value','Self-Eval Beam Search','Self-Evaluation Guided Beam Search for Reasoning','NeurIPS 2023','https://arxiv.org/abs/2305.00633','模型自评置信度','候选筛选（束搜索）','每个推理步','无','bg','','arxiv','不训练'],
+['value','TreeBoN','TreeBoN: Enhancing Inference-Time Alignment with Speculative Tree-Search and Best-of-N Sampling','2024','https://arxiv.org/abs/2410.16033','DPO 隐式奖励','候选筛选（树搜索）','分段剪枝','无','bg','','arxiv','现成辅助模型'],
+['value','Speculative Rejection','Fast Best-of-N Decoding via Speculative Rejection','NeurIPS 2024','https://arxiv.org/abs/2410.20290','部分序列的奖励','整句（提前淘汰）','生成中途','无','bg','加速 Best-of-N','arxiv','需训练辅助组件'],
+['value','GSI（引导推测推理）','Guided Speculative Inference for Efficient Test-Time Alignment of LLMs','ICLR 2026','https://arxiv.org/abs/2506.04118','奖励 + 小模型草稿','候选筛选（接受规则）','每一步','近似奖励倾斜分布','bg','页面原来只有出版信息，现补 arXiv','arxiv','需训练辅助组件'],
+['value','Critic-Guided Decoding','Critic-Guided Decoding for Controlled Text Generation','2022','https://arxiv.org/abs/2212.10938','RL 评论家价值','概率乘法','每一步','无','bg','','arxiv','需训练辅助组件'],
+['value','PAD','PAD: Personalized Alignment of LLMs at Decoding-Time','2024','https://arxiv.org/abs/2410.04070','个性化 token 奖励','对数（加奖励）','每一步','无','bg','','arxiv','需训练辅助组件'],
+['value','Speculative Lookahead','Constrained Decoding with Speculative Lookaheads','2024','https://arxiv.org/abs/2412.10418','前瞻约束奖励','候选筛选','草稿前瞻后验证','无','bg','','arxiv','现成辅助模型'],
+['seq','DAEMON','Language Model Decoding as Direct Metrics Optimization','ICLR 2024','https://arxiv.org/abs/2310.01041','目标指标的期望约束','整句（指数倾斜后重采样）','整句','指标匹配的最优解','bg','','arxiv','需训练辅助组件'],
+['seq','QAlign','Sample, Don\'t Search: Rethinking Test-Time Alignment for Language Models','2025','https://arxiv.org/abs/2504.03790','奖励模型','整句（MCMC）','整句','收敛到奖励倾斜分布','borrow','精确采样整句目标的另一条路','arxiv','需训练辅助组件'],
+['seq','Power Sampling','Reasoning with Sampling: Your Base Model is Smarter Than You Think','2025','https://arxiv.org/abs/2510.14901','模型自身似然的幂次','整句（块级 MCMC）','整句','渐近采样 p^α','borrow','整句层面锐化，和整句 Signed 同属「采样整句目标」','arxiv','不训练'],
+['seq','Rollout Roulette','Rollout Roulette: A Probabilistic Inference Approach to Inference-Time Scaling of LLMs using Particle-Based Monte Carlo Methods','2025','https://arxiv.org/abs/2502.01618','过程奖励模型','整句（粒子重采样）','每一步','无','bg','','arxiv','需训练辅助组件'],
+['seq','Soft Best-of-n','Soft Best-of-n Sampling for Model Alignment','2025','https://arxiv.org/abs/2505.03156','按奖励温度加权','整句','采样后','逼近倾斜分布的界','bg','','arxiv','需训练辅助组件'],
+['seq','QRS（准拒绝采样）','Sampling from Discrete Energy-Based Models with Quality/Efficiency Trade-offs','ICML 2022','https://arxiv.org/abs/2112.05702','文本能量模型','整句（近似拒绝采样）','整句','精度与效率的明确权衡','borrow','比笼统的「拒绝采样方法族」有理论区分度','arxiv','需训练辅助组件'],
+['constrain','Grammar-Aligned Decoding / ASAp','Grammar-Aligned Decoding','NeurIPS 2024','https://arxiv.org/abs/2405.21047','语法约束','概率（修正后的条件分布）','每一步','渐近匹配全局条件分布','borrow','说明「每步删非法词再归一化」一般不等于全局条件分布，和局部 vs 整句问题相关','arxiv','不训练'],
+['constrain','NeuroLogic Decoding','NeuroLogic Decoding: (Un)supervised Neural Text Generation with Predicate Logic Constraints','NAACL 2021','https://aclanthology.org/2021.naacl-main.339/','谓词逻辑的词汇约束','候选筛选（束搜索）','每一步','无','bg','','pub','不训练'],
+['constrain','GeLaTo','Tractable Control for Autoregressive Language Generation','ICML 2023','https://arxiv.org/abs/2304.07438','HMM 计算约束满足概率','概率乘法','每一步','约束必满足','bg','','arxiv','需训练辅助组件'],
+['constrain','Ctrl-G','Adaptable Logical Control for Large Language Models','NeurIPS 2024','https://arxiv.org/abs/2406.13892','HMM + DFA 逻辑约束','概率乘法','每一步','约束必满足','bg','','arxiv','需训练辅助组件'],
+['constrain','局部约束重采样','Controllable Generation via Locally Constrained Resampling','2024','https://arxiv.org/abs/2410.13111','逻辑约束','整句（局部重采样）','整句','约束满足','bg','','arxiv','不训练'],
+['constrain','AWRS','Fast Controlled Generation from Language Models with Adaptive Weighted Rejection Sampling','2025','https://arxiv.org/abs/2504.05410','布尔约束','候选筛选（自适应拒绝采样）','每一步','无偏的重要性权重','bg','','arxiv','不训练'],
+['constrain','COLD Decoding','COLD Decoding: Energy-based Constrained Text Generation with Langevin Dynamics','NeurIPS 2022','https://arxiv.org/abs/2202.11705','整序列能量函数','其他（连续松弛 + Langevin）','整句迭代','无','bg','整序列能量搜索；PPLM 不能代表这一类','arxiv','不训练'],
+['constrain','MuCoLa','Gradient-Based Constrained Sampling from Language Models','EMNLP 2022','https://arxiv.org/abs/2205.12558','约束能量项','其他（嵌入空间 Langevin）','整句迭代','无','bg','','arxiv','不训练'],
+['bound','CP-Δ / NAF','On Provable Copyright Protection for Generative Models','ICML 2023','https://arxiv.org/abs/2302.10870','不相交数据训练的两个模型','概率（min(q₁,q₂)/Z）或几何平均','每一步或整句','近访问自由（NAF）界','borrow','概率空间逐点算子，但取两个安全模型的「与」，不远离负模型','formula','需训练辅助组件'],
+['bound','CP-Fuse','Copyright-Protected Language Generation via Adaptive Model Fusion','2024','https://arxiv.org/abs/2412.06619','不相交版权数据上的两个模型','对数（自适应加权）','每一步','有界背诵','bg','','arxiv','需训练辅助组件'],
+['bound','PMixED','Differentially Private Next-Token Prediction of Large Language Models','2024','https://arxiv.org/abs/2403.15638','多个私有模型 + 公共模型','概率（混合 + 投影）','每一步','差分隐私','borrow','概率空间混合并投影，带隐私界','arxiv','需训练辅助组件'],
+['bound','SubMix','Submix: Practical Private Prediction for Large-Scale Language Models','2022','https://arxiv.org/abs/2201.00971','子集模型 + 公共模型','概率（混合）','每一步','差分隐私','bg','','arxiv','需训练辅助组件'],
+['bound','DP-ICL','Privacy-Preserving In-Context Learning for Large Language Models','2023','https://arxiv.org/abs/2305.01639','多份私有示例投票','候选筛选（聚合）','输出聚合','差分隐私','bg','','arxiv','不训练'],
+['bound','DP Few-Shot Generation','Privacy-Preserving In-Context Learning with Differentially Private Few-Shot Generation','ICLR 2024','https://arxiv.org/abs/2309.11765','多个私有上下文的分布','概率（聚合）','每一步','差分隐私','bg','','arxiv','不训练'],
+['bound','版权删除方法评测','Evaluating Copyright Takedown Methods for Language Models','NeurIPS 2024','https://arxiv.org/abs/2406.18664','受保护文本','—（评测基准）','—','—','bg','评测基准，不是方法','arxiv','—'],
+['bound','Conformal Language Modeling','Conformal Language Modeling','ICLR 2024','https://arxiv.org/abs/2306.10193','校准过的停止与拒绝规则','整句（采样集合）','构造采样集合','覆盖率保证','bg','','arxiv','需训练辅助组件'],
+['bound','Conformal Factuality','Language Models with Conformal Factuality Guarantees','2024','https://arxiv.org/abs/2402.10978','子断言置信分','整句（事后删减）','生成后','正确率保证','bg','','arxiv','需训练辅助组件'],
+['bound','Conformal Abstention','Mitigating LLM Hallucinations via Conformal Abstention','2024','https://arxiv.org/abs/2405.01563','多样本自一致性','整句（是否弃答）','生成后','幻觉率上界','bg','','arxiv','不训练'],
+['bound','Conformal Tail Risk Control','Conformal Tail Risk Control for Large Language Model Alignment','2025','https://arxiv.org/abs/2502.20285','风险打分校准','候选筛选','输出筛选','尾部风险控制','bg','','arxiv','需训练辅助组件'],
+['diff','离散扩散的简单引导（D-CFG / D-CBG）','Simple Guidance Mechanisms for Discrete Diffusion Models','ICLR 2025','https://arxiv.org/abs/2412.10193','条件 / 无条件去噪器；分类器','对数','每步去噪','无','base','做扩散语言模型实验时的基线','arxiv','需训练辅助组件'],
+['diff','Discrete Guidance','Unlocking Guidance for Discrete State-Space Diffusion and Flow Models','ICLR 2025','https://arxiv.org/abs/2406.01572','属性预测器或条件 / 无条件比','对数（转移率指数加权）','连续时间转移率','无','bg','','arxiv','需训练辅助组件'],
+['diff','A-CFG','Adaptive Classifier-Free Guidance via Dynamic Low-Confidence Masking','2025','https://arxiv.org/abs/2505.20199','重遮低置信词构造的无条件分支','对数','每步去噪','无','borrow','负分支由重遮掩自身生成','arxiv','不训练'],
+['diff','ReMDM','Remasking Discrete Diffusion Models with Inference-Time Scaling','2025','https://arxiv.org/abs/2503.00307','重遮掩采样器','其他（改去噪轨迹）','去噪中','无','bg','','arxiv','不训练'],
+['diff','掩码模型的即插即用控制','Plug-and-Play Controllable Generation for Discrete Masked Models','2024','https://arxiv.org/abs/2410.02143','任意奖励函数','候选筛选（重要性采样）','去噪中','无','bg','','arxiv','需训练辅助组件'],
+['diff','SVDD','Derivative-Free Guidance in Continuous and Discrete Diffusion Models with Soft Value-Based Decoding','2024','https://arxiv.org/abs/2408.08252','软价值函数','候选筛选','每步多候选选优','无','bg','','arxiv','需训练辅助组件'],
+['diff','EntRGi','Entropy Aware Reward Guidance for Diffusion Language Model Alignment','2026','https://arxiv.org/abs/2602.05000','可微奖励梯度，按熵混合软硬词','其他（梯度）','每步去噪','无','bg','','arxiv','需训练辅助组件'],
+['diff','Self-Rewarding SMC','Self-Rewarding Sequential Monte Carlo for Masked Diffusion Language Models','2026','https://arxiv.org/abs/2602.01849','模型自身置信度','候选筛选（粒子重采样）','多粒子去噪','无','borrow','可作整句 Signed 目标的采样器','arxiv','不训练'],
+['diff','TReASURe','Tree Reward-Aligned Search for TReASURe in Masked Diffusion Language Models','2025','https://arxiv.org/abs/2509.23146','任务奖励','候选筛选（树搜索）','去噪树搜索','无','bg','','arxiv','需训练辅助组件'],
+['diff','ILRR','ILRR: Inference-Time Steering Method for Masked Diffusion Language Models','2026','https://arxiv.org/abs/2601.21647','参考文本的隐表示','隐藏状态','去噪中注入','无','bg','','arxiv','不训练'],
+['diff','DiffuGuard','DiffuGuard: How Intrinsic Safety is Lost and Found in Diffusion Large Language Models','ICLR 2026','https://arxiv.org/abs/2509.24296','随机退火重遮掩 + 块级审查','其他（重遮）','去噪中','无','bg','扩散语言模型的安全','arxiv','不训练'],
+['diff','Safety-Aware Denoiser','The Safety-Aware Denoiser for Text Diffusion Models','2026','https://arxiv.org/abs/2605.08116','安全约束 / 有害分布','其他（改去噪器）','每步去噪','无','bg','','arxiv','—'],
+['diff','自适应引导与重遮（安全）','Adaptive Steering and Remasking for Safe Generation in Diffusion Language Models','2026','https://arxiv.org/abs/2605.13043','安全方向 + 安全感知重遮','隐藏状态 + 重遮','去噪各步','无','bg','','arxiv','不训练'],
+['diff','D5P4','D5P4: Partition Determinantal Point Process for Diversity in Parallel Discrete Diffusion Decoding','2026','https://arxiv.org/abs/2603.19146','DPP 多样性核','候选筛选','扩散束搜索','无','bg','','arxiv','不训练'],
+['agent','多样性引导采样','Efficient semantic uncertainty quantification in language models via diversity-steered sampling','2025','https://arxiv.org/abs/2510.21310','与先前样本的 NLI 语义相似度','概率（改提议分布）','每一步','无','borrow','惩罚与先前尝试相似，相当于以历史为负分支','arxiv','现成辅助模型'],
+['agent','ESamp','Large Language Models Explore by Latent Distilling','2026','https://arxiv.org/abs/2604.24927','轻量预测器的隐表示误差','对数','每一步','无','borrow','压低已见过的方向，对抗模式坍缩','arxiv','需训练辅助组件'],
+['agent','Verbalized Sampling','Verbalized Sampling: How to Mitigate Mode Collapse and Unlock LLM Diversity','2025','https://arxiv.org/abs/2510.01171','让模型口述多个回答及概率','整句（提示）','提示层','无','bg','','arxiv','不训练'],
+['agent','Arithmetic Sampling','Arithmetic Sampling: Parallel Diverse Decoding for Large Language Models','ICML 2023','https://arxiv.org/abs/2210.15458','算术编码码本上的准随机点','概率（不改分布）','并行采样','无偏估计','bg','','arxiv','不训练'],
+['agent','工具调用率引导','Tunable Tool-Call Rates in LLM Agents via Representation Steering','2026','https://arxiv.org/abs/2608.25198','是否调用工具的线性方向','隐藏状态','推理时加方向','无','bg','agent 行为的连续调节','arxiv','不训练'],
+['agent','Neural Procedural Memory','Neural Procedural Memory: Empowering LLM Agents with Implicit Activation Steering','2026','https://arxiv.org/abs/2606.29824','检索经验合成的引导向量','隐藏状态','每一步','无','borrow','用记忆条件化引导 agent','arxiv','需训练辅助组件'],
+['agent','GAMER','Bridging Inference-Time Scaling and Episodic Memory with Action-Centric Graphs','2026','https://arxiv.org/abs/2607.27415','动作图记忆中的负价值','整句（动作层）','agent 搜索时','无','borrow','用失败记忆压低错误轨迹','arxiv','不训练'],
+['personal','Context Steering','Context Steering: Controllable Personalization at Inference Time','2024','https://arxiv.org/abs/2405.01768','有 / 无个性化上下文','对数','每一步','无','base','两上下文差乘 λ（可正可负），最接近两上下文 Signed 的对数版','arxiv','不训练'],
+['personal','系统提示强度控制','Steer Model beyond Assistant: Controlling System Prompt Strength via Contrastive Decoding','2026','https://arxiv.org/abs/2601.06403','目标与默认系统提示的对数差','对数','每一步','无','bg','两个系统提示的对比','arxiv','不训练'],
+['personal','CoPe','Personalized LLM Decoding via Contrasting Personal Preference','2025','https://arxiv.org/abs/2506.12109','用户 PEFT 模型 vs 基础模型','对数','每一步','无','bg','','arxiv','需训练辅助组件'],
+['personal','Drift','Drift: Decoding-time Personalized Alignments with Implicit User Preferences','2025','https://arxiv.org/abs/2502.14289','可解释属性的隐式奖励组合','对数','每一步','无','bg','','arxiv','不训练'],
+['personal','Amulet','Amulet: ReAlignment During Test Time for Personalized Preference Adaptation of LLMs','2025','https://arxiv.org/abs/2502.19148','用户偏好提示下的分布','概率（每步在线优化）','每一步','有闭式解','bg','','arxiv','不训练'],
+['personal','人设遵循的动态重要性估计','Enhancing Persona Following at Decoding Time via Dynamic Importance Estimation for Role-Playing Agents','2026','https://arxiv.org/abs/2603.01438','有 / 无人设约束分布的散度','对数','每一步','无','bg','','arxiv','不训练'],
+['personal','FACD','Identifying and Mitigating Bottlenecks in Role-Playing Agents: A Systematic Study of Disentangling Character Profile Axes','2026','https://arxiv.org/abs/2601.04716','完整人设 vs 删减人设','对数','每一步','无','bg','','arxiv','不训练'],
+['general','EDT（按熵调温度）','EDT: Improving Large Language Models\' Generation by Entropy-based Dynamic Temperature Sampling','2024','https://arxiv.org/abs/2403.14541','当前步分布的熵','对数（温度）','每一步','无','bg','','arxiv','不训练']
 ];
 
 const tb=document.getElementById('tb'), q=document.getElementById('q'), count=document.getElementById('count');
@@ -262,13 +416,13 @@ function render(){
     if(cat!=='all'&&cat!==k)return;
     const rows=R.filter(r=>r[0]===k&&(rel==='all'||r[9]===rel)&&(!term||r.join(' ').toLowerCase().includes(term)));
     if(!rows.length)return;
-    html+=`<tr class="group"><td colspan="8">${esc(label)}<small>${esc(desc)} · ${rows.length} 条</small></td></tr>`;
+    html+=`<tr class="group"><td colspan="9">${esc(label)}<small>${esc(desc)} · ${rows.length} 条</small></td></tr>`;
     rows.forEach(r=>{n++;
       const link=r[4]?`<a href="${esc(r[4])}" target="_blank" rel="noopener">${esc(r[3])}</a>`:esc(r[3]);
       const relCell=r[9]==='—'?'<span class="rel bg">—</span>':`<span class="rel ${r[9]}">${REL[r[9]]}</span>`;
-      html+=`<tr><td class="name"><b>${esc(r[1])}</b><span class="t">${esc(r[2])}</span></td><td>${link}</td><td>${esc(r[5])}</td><td>${esc(r[6])}</td><td>${esc(r[7])}</td><td>${esc(r[8])}</td><td>${relCell}${r[10]?'<br><span style="color:var(--muted);font-size:12px">'+esc(r[10])+'</span>':''}</td><td><span class="st ${r[11]}">${ST[r[11]]}</span></td></tr>`;});
+      html+=`<tr><td class="name"><b>${esc(r[1])}</b><span class="t">${esc(r[2])}</span></td><td>${link}</td><td>${esc(r[5])}</td><td>${esc(r[6])}</td><td>${esc(r[7])}</td><td>${esc(r[8])}</td><td>${esc(r[12])}</td><td>${relCell}${r[10]?'<br><span style="color:var(--muted);font-size:12px">'+esc(r[10])+'</span>':''}</td><td><span class="st ${r[11]}">${ST[r[11]]}</span></td></tr>`;});
   });
-  tb.innerHTML=html||'<tr><td colspan="8" style="color:var(--muted)">没有匹配的方法。换个关键词，或把类别和关系都切回「全部」。</td></tr>';
+  tb.innerHTML=html||'<tr><td colspan="9" style="color:var(--muted)">没有匹配的方法。换个关键词，或把类别和关系都切回「全部」。</td></tr>';
   count.textContent=`显示 ${n} / ${R.length} 条`;
 }
 q.addEventListener('input',render); render();
